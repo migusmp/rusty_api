@@ -1,6 +1,6 @@
 use crate::models::user::{LoginUser, RegisterUser};
-use crate::services::user::register;
-use axum::{http::StatusCode, response::IntoResponse, Form, Json};
+use crate::services::user::{login, register};
+use axum::{http::StatusCode, response::IntoResponse, Form};
 
 pub async fn user_register(
     Form(data): Form<RegisterUser>,
@@ -26,9 +26,7 @@ pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse
     let password = &data.password;
 
     // Llamamos al servicio de registro
-    let login_user = LoginUser::new(username.to_string(), password.to_string());
-    Ok((
-        StatusCode::OK,
-        Json("Login route: ".to_string() + &login_user.username),
-    ))
+    let user = LoginUser::new(username.to_string(), password.to_string());
+
+    login(user).await
 }
