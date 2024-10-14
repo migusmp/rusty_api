@@ -46,15 +46,10 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
         ));
     }
     // Recogemos la información de la BBDD del usuario.
-    let user_data =
-        match tokio::task::spawn_blocking(move || get_user_full_data(&user, &conn)).await {
-            Ok(data) => data,
-            Err(_) => {
-                eprintln!("Error al ejecutar la tarea de bloqueo");
-                return Err(StatusCode::INTERNAL_SERVER_ERROR);
-            }
-        }
-        .unwrap();
+    let user_data = tokio::task::spawn_blocking(move || get_user_full_data(&user, &conn))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Creamos el payload.
     let payload = match tokio::task::spawn_blocking(move || {
@@ -69,14 +64,13 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
             exp,
             iat,
         );
-        let token = user_payload.token();
-        token
+        user_payload.token()
     })
     .await
     {
         Ok(data) => data,
         Err(_) => {
-            eprintln!("Error al obtener el payload");
+            eprintln!("Error al generar el token");
             return Err(StatusCode::INTERNAL_SERVER_ERROR);
         }
     };
@@ -139,8 +133,8 @@ fn verify_user_login(user_login: &LoginUser, conn: &Connection) -> Result<bool, 
         Ok(false)
     }
 }
-fn hashed_pwd(pwd: &String, hashed_pwd: &String) -> Result<bool, BcryptError> {
-    Ok(bcrypt::verify(pwd, hashed_pwd)?)
+fn hashed_pwd(pwd: &String, hashed_pwd: &str) -> Result<bool, BcryptError> {
+    bcrypt::verify(pwd, hashed_pwd)
 }
 
 fn get_user_full_data(user: &LoginUser, conn: &Connection) -> Result<User, rusqlite::Error> {
@@ -154,7 +148,7 @@ fn get_user_full_data(user: &LoginUser, conn: &Connection) -> Result<User, rusql
     let user_data = stmt
         .query_row(params![&user.username], |row| {
             Ok(User {
-                id: row.get(0)?,
+                id: row.get::<_, i64>(0)?,
                 name: row.get(1)?,
                 email: row.get(2)?,
                 password: row.get(3)?,

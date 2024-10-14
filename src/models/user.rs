@@ -17,7 +17,7 @@ pub struct LoginUser {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    pub id: String,
+    pub id: i64,
     pub name: String,
     pub email: String,
     pub password: String,
@@ -26,7 +26,7 @@ pub struct User {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Payload {
-    pub id: String,
+    pub id: i64,
     pub name: String,
     pub email: String,
     pub password: String,
@@ -53,7 +53,7 @@ impl LoginUser {
 
 impl Payload {
     pub fn new(
-        id: String,
+        id: i64,
         name: String,
         email: String,
         password: String,
@@ -73,7 +73,6 @@ impl Payload {
     }
 
     pub fn token(&self) -> Result<String, jsonwebtoken::errors::Error> {
-        let token = generate_token(self);
-        token
+        generate_token(self)
     }
 }
