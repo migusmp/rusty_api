@@ -1,4 +1,5 @@
 use crate::models::user::LoginUser;
+use crate::utils::jwt::generate_token;
 use crate::utils::responses::{error_response, success_response};
 use crate::{db::connection::open_users_db, models::user::RegisterUser};
 use axum::{http::StatusCode, response::IntoResponse};
@@ -44,6 +45,8 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
             "Incorrect username or password",
         ));
     }
+
+    // Si la contraseña y el usuario son correctos creamos el token de seguridad.
 
     Ok(success_response(StatusCode::OK, "User logged successfully"))
 }
