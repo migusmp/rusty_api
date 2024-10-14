@@ -2,6 +2,7 @@ use crate::models::user::LoginUser;
 use crate::utils::responses::{error_response, success_response};
 use crate::{db::connection::open_users_db, models::user::RegisterUser};
 use axum::{http::StatusCode, response::IntoResponse};
+use bcrypt::BcryptError;
 use rusqlite::{params, Connection};
 
 pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, StatusCode> {
@@ -36,7 +37,7 @@ pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, StatusCod
 pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
     let conn = open_users_db().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // validamos que el usuario exista
+    // Verificamos que el usuario y la contraseña son correctos.
     if !verify_user_login(&user, &conn).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? {
         return Ok(error_response(
             StatusCode::UNAUTHORIZED,
@@ -81,16 +82,25 @@ fn insert_user(
     Ok(())
 }
 
-fn verify_user_login(user: &LoginUser, conn: &Connection) -> Result<bool, rusqlite::Error> {
+// Función para verificar que el usuario y la contraseña son correctos
+fn verify_user_login(user_login: &LoginUser, conn: &Connection) -> Result<bool, rusqlite::Error> {
     let mut stmt = conn
-        .prepare("SELECT COUNT (*) FROM users WHERE name = ?1 AND password = ?2")
+        .prepare("SELECT password FROM users WHERE name = ?1")
         .map_err(|_| rusqlite::Error::QueryReturnedNoRows)?;
-    let user_exists: i32 = stmt
-        .query_row(params![&user.username, &user.password], |row| row.get(0))
+
+    let stored_password: String = stmt
+        .query_row(params![&user_login.username], |row| row.get(0))
         .map_err(|e| {
             eprintln!("Error al verificar usuario: {}", e);
             rusqlite::Error::QueryReturnedNoRows
         })?;
 
-    Ok(user_exists > 0)
+    if hashed_pwd(&user_login.password, &stored_password).unwrap() {
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+fn hashed_pwd(pwd: &String, hashed_pwd: &String) -> Result<bool, BcryptError> {
+    Ok(bcrypt::verify(pwd, hashed_pwd)?)
 }

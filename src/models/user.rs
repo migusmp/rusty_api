@@ -13,6 +13,15 @@ pub struct LoginUser {
     pub password: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct User {
+    pub id: String,
+    pub name: String,
+    pub email: String,
+    pub password: String,
+    pub created_at: String,
+}
+
 impl RegisterUser {
     pub fn new(username: String, email: String, password: String) -> RegisterUser {
         RegisterUser {
