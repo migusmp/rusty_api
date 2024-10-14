@@ -1,4 +1,4 @@
-use crate::models::user::LoginUser;
+use crate::models::user::{LoginUser, Payload};
 use crate::utils::responses::ApiResponse;
 use crate::utils::user_utils::{
     create_payload, create_token_cookie, get_user_full_data, insert_user, verify_user_exists,
@@ -7,6 +7,8 @@ use crate::utils::user_utils::{
 use crate::{db::connection::open_users_db, models::user::RegisterUser};
 use axum::Json;
 use axum::{http::StatusCode, response::IntoResponse};
+use jsonwebtoken::TokenData;
+use jsonwebtoken::{DecodingKey, Validation};
 use serde_json::json;
 
 pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, StatusCode> {
@@ -76,4 +78,26 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
         })),
         token_cookie,
     ))
+}
+
+pub async fn info(auth_token: String) -> Result<impl IntoResponse, StatusCode> {
+    //let conn = open_users_db().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let token_data: TokenData<Payload> = jsonwebtoken::decode(
+        &auth_token,
+        &DecodingKey::from_secret("secret".as_ref()),
+        &Validation::default(),
+    )
+    .map_err(|e| {
+        eprintln!("Error al decodificar el token: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    println!("Token: {:?}", token_data.claims);
+
+    //let user_data = tokio::task::spawn_blocking(move || get_user_full_data(&auth_token, &conn))
+    //    .await
+    //    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    //    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(ApiResponse::success("User info"))
 }
