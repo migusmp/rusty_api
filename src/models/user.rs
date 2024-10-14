@@ -72,8 +72,8 @@ impl Payload {
         }
     }
 
-    pub fn token(&Self) -> String {
-       let token = generate_token(Self);
-        Ok(token)
+    pub fn token(&self) -> Result<String, jsonwebtoken::errors::Error> {
+        let token = generate_token(self);
+        token
     }
 }

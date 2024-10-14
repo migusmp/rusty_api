@@ -1,9 +1,9 @@
-use crate::models::user::LoginUser;
-use crate::utils::jwt::generate_token;
+use crate::models::user::{LoginUser, Payload, User};
 use crate::utils::responses::{error_response, success_response};
 use crate::{db::connection::open_users_db, models::user::RegisterUser};
 use axum::{http::StatusCode, response::IntoResponse};
 use bcrypt::BcryptError;
+use chrono::{Duration, Utc};
 use rusqlite::{params, Connection};
 
 pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, StatusCode> {
@@ -45,9 +45,44 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
             "Incorrect username or password",
         ));
     }
+    // Recogemos la información de la BBDD del usuario.
+    let user_data =
+        match tokio::task::spawn_blocking(move || get_user_full_data(&user, &conn)).await {
+            Ok(data) => data,
+            Err(_) => {
+                eprintln!("Error al ejecutar la tarea de bloqueo");
+                return Err(StatusCode::INTERNAL_SERVER_ERROR);
+            }
+        }
+        .unwrap();
 
+    // Creamos el payload.
+    let payload = match tokio::task::spawn_blocking(move || {
+        let iat = Utc::now().timestamp().to_string(); // Tiempo actual
+        let exp = (Utc::now() + Duration::hours(1)).timestamp().to_string(); // 1 hora de tiempo de expiración.
+        let user_payload = Payload::new(
+            user_data.id,
+            user_data.name,
+            user_data.email,
+            user_data.password,
+            user_data.created_at,
+            exp,
+            iat,
+        );
+        let token = user_payload.token();
+        token
+    })
+    .await
+    {
+        Ok(data) => data,
+        Err(_) => {
+            eprintln!("Error al obtener el payload");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
+    eprintln!("{:?}", payload);
     // Si la contraseña y el usuario son correctos creamos el token de seguridad.
-
     Ok(success_response(StatusCode::OK, "User logged successfully"))
 }
 
@@ -106,4 +141,30 @@ fn verify_user_login(user_login: &LoginUser, conn: &Connection) -> Result<bool, 
 }
 fn hashed_pwd(pwd: &String, hashed_pwd: &String) -> Result<bool, BcryptError> {
     Ok(bcrypt::verify(pwd, hashed_pwd)?)
+}
+
+fn get_user_full_data(user: &LoginUser, conn: &Connection) -> Result<User, rusqlite::Error> {
+    let mut stmt = conn
+        .prepare("SELECT id, name, email, password, created_at FROM users WHERE name = ?1")
+        .map_err(|e| {
+            eprintln!("Error al preparar la consulta: {}", e);
+            e
+        })?;
+
+    let user_data = stmt
+        .query_row(params![&user.username], |row| {
+            Ok(User {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                email: row.get(2)?,
+                password: row.get(3)?,
+                created_at: row.get(4)?,
+            })
+        })
+        .map_err(|e| {
+            eprintln!("Error al obtener los datos del usuario: {}", e);
+            e
+        })?;
+
+    Ok(user_data)
 }
