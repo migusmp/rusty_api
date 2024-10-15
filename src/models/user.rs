@@ -31,8 +31,8 @@ pub struct Payload {
     pub email: String,
     pub password: String,
     pub created_at: String,
-    pub exp: String,
-    pub iat: String,
+    pub exp: i64,
+    pub iat: i64,
 }
 
 impl RegisterUser {
@@ -58,8 +58,8 @@ impl Payload {
         email: String,
         password: String,
         created_at: String,
-        exp: String,
-        iat: String,
+        exp: i64,
+        iat: i64,
     ) -> Self {
         Payload {
             id,

@@ -97,8 +97,8 @@ pub fn get_user_full_data(user: &LoginUser, conn: &Connection) -> Result<User, r
 }
 
 pub fn create_payload(user_data: User) -> Result<String, jsonwebtoken::errors::Error> {
-    let iat = Utc::now().timestamp().to_string(); // tiempo actual
-    let exp = (Utc::now() + Duration::hours(1)).timestamp().to_string(); // 1 hora de tiempo de expiración.
+    let iat = Utc::now().timestamp(); // tiempo actual
+    let exp = (Utc::now() + Duration::hours(1)).timestamp(); // 1 hora de tiempo de expiración.
     let user_payload = Payload::new(
         user_data.id,
         user_data.name,
