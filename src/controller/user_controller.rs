@@ -4,6 +4,7 @@ use crate::utils::responses::ApiResponse;
 use axum::Extension;
 use axum::{http::StatusCode, response::IntoResponse, Form};
 
+// Ruta de registro de usuarios.
 pub async fn user_register(
     Form(data): Form<RegisterUser>,
 ) -> Result<impl IntoResponse, StatusCode> {
@@ -22,6 +23,7 @@ pub async fn user_register(
     register(new_user).await
 }
 
+// Ruta de inicio de sesión de usuarios.
 pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse, StatusCode> {
     // Accedemos a los datos del usuario
     let username = &data.username;
