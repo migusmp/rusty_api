@@ -1,6 +1,7 @@
 use crate::models::user::{LoginUser, RegisterUser};
 use crate::services::user::{info, login, register};
-use axum::http::HeaderMap;
+use crate::utils::responses::ApiResponse;
+use axum::Extension;
 use axum::{http::StatusCode, response::IntoResponse, Form};
 
 pub async fn user_register(
@@ -35,20 +36,12 @@ pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse
 // Hacer ruta de logout
 
 // Ruta de informacion de usuario (Probar decodear el payload)
-pub async fn user_info(headers: HeaderMap) -> Result<impl IntoResponse, StatusCode> {
-    // Intentar obtener la cookie "auth" desde los headers
-    if let Some(cookie_header) = headers.get("cookie") {
-        if let Ok(cookie_str) = cookie_header.to_str() {
-            // Buscar la cookie "auth" en la cadena de cookies
-            for cookie in cookie_str.split(';') {
-                let cookie = cookie.trim();
-                if let Some(auth_token) = cookie.strip_prefix("auth=") {
-                    return info(auth_token.to_string()).await;
-                }
-            }
-        }
+pub async fn user_info(
+    Extension(auth_token): Extension<String>,
+) -> Result<impl IntoResponse, StatusCode> {
+    if info(auth_token).await.is_ok() {
+        Ok(ApiResponse::success("Usuario verificado correctamente"))
+    } else {
+        Err(StatusCode::UNAUTHORIZED)
     }
-
-    // Si no se encuentra la cookie "auth"
-    Err(StatusCode::UNAUTHORIZED)
 }

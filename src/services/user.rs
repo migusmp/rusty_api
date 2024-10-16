@@ -81,8 +81,6 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
 }
 
 pub async fn info(auth_token: String) -> Result<impl IntoResponse, StatusCode> {
-    //let conn = open_users_db().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
     let token_data: TokenData<Payload> = jsonwebtoken::decode(
         &auth_token,
         &DecodingKey::from_secret("secret".as_ref()),
