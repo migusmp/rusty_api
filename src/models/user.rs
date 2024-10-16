@@ -24,7 +24,7 @@ pub struct User {
     pub created_at: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Payload {
     pub id: i64,
     pub name: String,

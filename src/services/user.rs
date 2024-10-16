@@ -80,7 +80,7 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
     ))
 }
 
-pub async fn info(auth_token: String) -> Result<impl IntoResponse, StatusCode> {
+pub async fn decode_token(auth_token: String) -> Result<Payload, StatusCode> {
     let token_data: TokenData<Payload> = jsonwebtoken::decode(
         &auth_token,
         &DecodingKey::from_secret("secret".as_ref()),
@@ -90,12 +90,6 @@ pub async fn info(auth_token: String) -> Result<impl IntoResponse, StatusCode> {
         eprintln!("Error al decodificar el token: {}", e);
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
-    println!("Token: {:?}", token_data.claims);
 
-    //let user_data = tokio::task::spawn_blocking(move || get_user_full_data(&auth_token, &conn))
-    //    .await
-    //    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-    //    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    Ok(ApiResponse::success("User info"))
+    Ok(token_data.claims)
 }

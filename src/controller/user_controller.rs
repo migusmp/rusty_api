@@ -1,5 +1,5 @@
-use crate::models::user::{LoginUser, RegisterUser};
-use crate::services::user::{info, login, register};
+use crate::models::user::{LoginUser, Payload, RegisterUser};
+use crate::services::user::{login, register};
 use crate::utils::responses::ApiResponse;
 use axum::Extension;
 use axum::{http::StatusCode, response::IntoResponse, Form};
@@ -37,11 +37,10 @@ pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse
 
 // Ruta de informacion de usuario (Probar decodear el payload)
 pub async fn user_info(
-    Extension(auth_token): Extension<String>,
+    Extension(payload): Extension<Payload>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    if info(auth_token).await.is_ok() {
-        Ok(ApiResponse::success("Usuario verificado correctamente"))
-    } else {
-        Err(StatusCode::UNAUTHORIZED)
-    }
+    println!("User ID: {}", payload.id);
+    println!("User name: {}", payload.name);
+
+    Ok(ApiResponse::success("Usuario verificado correctamente"))
 }
