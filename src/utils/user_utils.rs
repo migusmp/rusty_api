@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 
-use axum::response::Response;
+use axum::{http::StatusCode, response::Response};
 use bcrypt::BcryptError;
 use chrono::{Duration, Utc};
 use cookie::Cookie;
+use jsonwebtoken::{DecodingKey, TokenData, Validation};
 use rusqlite::{params, Connection};
 
 use crate::models::user::{LoginUser, Payload, RegisterUser, User};
@@ -123,4 +124,18 @@ pub fn append_cookie_to_response(res: &mut Response, cookie: Cookie) {
         axum::http::header::SET_COOKIE,
         cookie.to_string().parse().unwrap(),
     );
+}
+
+pub async fn decode_token(auth_token: String) -> Result<Payload, StatusCode> {
+    let token_data: TokenData<Payload> = jsonwebtoken::decode(
+        &auth_token,
+        &DecodingKey::from_secret("secret".as_ref()),
+        &Validation::default(),
+    )
+    .map_err(|e| {
+        eprintln!("Error al decodificar el token: {}", e);
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    Ok(token_data.claims)
 }

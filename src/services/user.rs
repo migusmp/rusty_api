@@ -1,4 +1,4 @@
-use crate::models::user::{LoginUser, Payload};
+use crate::models::user::LoginUser;
 use crate::utils::responses::ApiResponse;
 use crate::utils::user_utils::{
     create_payload, create_token_cookie, get_user_full_data, insert_user, verify_user_exists,
@@ -7,8 +7,6 @@ use crate::utils::user_utils::{
 use crate::{db::connection::open_users_db, models::user::RegisterUser};
 use axum::Json;
 use axum::{http::StatusCode, response::IntoResponse};
-use jsonwebtoken::TokenData;
-use jsonwebtoken::{DecodingKey, Validation};
 use serde_json::json;
 
 pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, StatusCode> {
@@ -78,18 +76,4 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
         })),
         token_cookie,
     ))
-}
-
-pub async fn decode_token(auth_token: String) -> Result<Payload, StatusCode> {
-    let token_data: TokenData<Payload> = jsonwebtoken::decode(
-        &auth_token,
-        &DecodingKey::from_secret("secret".as_ref()),
-        &Validation::default(),
-    )
-    .map_err(|e| {
-        eprintln!("Error al decodificar el token: {}", e);
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    Ok(token_data.claims)
 }

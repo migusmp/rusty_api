@@ -34,6 +34,13 @@ pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse
 }
 
 // Hacer ruta de logout
+pub async fn user_logout() -> Result<impl IntoResponse, StatusCode> {
+    let response = (
+        StatusCode::OK,
+        [("Set-Cookie", "auth=; Max-Age=0; Path=/; HttpOnly")],
+    );
+    Ok(response)
+}
 
 // Ruta de informacion de usuario (Probar decodear el payload)
 pub async fn user_info(

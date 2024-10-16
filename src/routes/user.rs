@@ -8,6 +8,10 @@ pub fn user_router() -> Router {
         .route("/register", post(user_register))
         .route("/login", post(user_login))
         .route(
+            "/logout",
+            post(user_logout).route_layer(axum::middleware::from_fn(auth)),
+        )
+        .route(
             "/info",
             get(user_info).route_layer(axum::middleware::from_fn(auth)),
         )

@@ -5,7 +5,8 @@ use axum::{
     response::IntoResponse,
 };
 
-use crate::services::user::decode_token;
+use crate::utils::{responses::ApiResponse, user_utils::decode_token};
+
 // B es un tipo genérico, ya que la request nos puede devolver cualquier valor
 pub async fn auth<B>(req: Request<B>, next: Next) -> impl IntoResponse {
     // Obtenemos todos los headers de la petición.
@@ -27,7 +28,8 @@ pub async fn auth<B>(req: Request<B>, next: Next) -> impl IntoResponse {
                             return next.run(req).await;
                         }
                         Err(_) => {
-                            return StatusCode::UNAUTHORIZED.into_response();
+                            return (ApiResponse::error(StatusCode::UNAUTHORIZED, "Unauthorized"))
+                                .into_response();
                         }
                     };
                 };
@@ -35,5 +37,5 @@ pub async fn auth<B>(req: Request<B>, next: Next) -> impl IntoResponse {
         }
     }
 
-    StatusCode::UNAUTHORIZED.into_response()
+    (ApiResponse::error(StatusCode::UNAUTHORIZED, "Unauthorized")).into_response()
 }
