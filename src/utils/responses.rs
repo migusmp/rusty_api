@@ -5,6 +5,12 @@ use serde_json::json;
 
 use super::user_utils::append_cookie_to_response;
 
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    pub status: String,
+    pub message: String,
+}
+
 pub enum ApiResponse<'a> {
     Success(StatusCode, Json<serde_json::Value>),
     SuccessWithData(StatusCode, Json<serde_json::Value>),

@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use tokio::sync::broadcast;
 
+#[derive(Debug)]
 pub struct ChatState {
     rooms: HashMap<String, broadcast::Sender<String>>, // Mapa de salas donde la clave es el room_id y el valor es un canal broadcast
 }

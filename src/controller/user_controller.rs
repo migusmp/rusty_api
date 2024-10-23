@@ -1,4 +1,4 @@
-use crate::models::user::{LoginUser, Payload, RegisterUser};
+use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser};
 use crate::services::user::{login, register};
 use crate::utils::responses::ApiResponse;
 use axum::Extension;
@@ -7,11 +7,27 @@ use axum::{http::StatusCode, response::IntoResponse, Form};
 // Ruta de registro de usuarios.
 pub async fn user_register(
     Form(data): Form<RegisterUser>,
-) -> Result<impl IntoResponse, StatusCode> {
+) -> Result<impl IntoResponse, ErrorRequest> {
     // Accedemos a los datos del usuario
     let username = &data.username;
     let email = &data.email;
     let password = &data.password;
+
+    if username.trim().is_empty() {
+        return Err(ErrorRequest::UsernameEmpty);
+    }
+
+    if username.len() < 3 {
+        return Err(ErrorRequest::UsernameInvalid);
+    }
+
+    if !email.contains("@") {
+        return Err(ErrorRequest::EmailInvalid);
+    }
+
+    if password.len() < 4 {
+        return Err(ErrorRequest::PasswordInvalid);
+    }
 
     // Llamamos al servicio de registro
     let new_user = RegisterUser::new(
@@ -20,11 +36,11 @@ pub async fn user_register(
         password.to_string(),
     );
 
-    register(new_user).await
+    Ok(register(new_user).await)
 }
 
 // Ruta de inicio de sesión de usuarios.
-pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse, StatusCode> {
+pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse, ErrorRequest> {
     // Accedemos a los datos del usuario
     let username = &data.username;
     let password = &data.password;
@@ -32,7 +48,7 @@ pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse
     // Llamamos al servicio de registro
     let user = LoginUser::new(username.to_string(), password.to_string());
 
-    login(user).await
+    Ok(login(user).await)
 }
 
 // Hacer ruta de logout

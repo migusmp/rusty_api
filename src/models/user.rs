@@ -1,6 +1,7 @@
-use serde::{Deserialize, Serialize};
-
 use crate::utils::jwt::generate_token;
+use crate::utils::responses::ErrorResponse;
+use axum::{http::StatusCode, response::IntoResponse, Json};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterUser {
@@ -33,6 +34,33 @@ pub struct Payload {
     pub created_at: String,
     pub exp: i64,
     pub iat: i64,
+}
+
+pub enum ErrorRequest {
+    UsernameInvalid,
+    UsernameEmpty,
+    EmailInvalid,
+    PasswordInvalid,
+    UserAlreadyExists,
+    InternalError,
+}
+
+impl IntoResponse for ErrorRequest {
+    fn into_response(self) -> axum::response::Response {
+        let (status, err_msg) = match self {
+            ErrorRequest::UsernameInvalid => (StatusCode::BAD_REQUEST, "Invalid username"),
+            ErrorRequest::UsernameEmpty => (StatusCode::BAD_REQUEST, "You must enter a username"),
+            ErrorRequest::EmailInvalid => (StatusCode::BAD_REQUEST, "Invalid email"),
+            ErrorRequest::PasswordInvalid => (StatusCode::BAD_REQUEST, "invalid password"),
+            ErrorRequest::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
+            ErrorRequest::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal error"),
+        };
+        let body = Json(ErrorResponse {
+            status: "error".to_string(),
+            message: err_msg.to_string(),
+        });
+        (status, body).into_response()
+    }
 }
 
 impl RegisterUser {

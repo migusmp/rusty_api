@@ -2,8 +2,9 @@ use std::sync::{Arc, Mutex};
 
 use axum::{middleware::from_fn, routing::post, Extension, Router};
 
+use crate::controller::chat_controller::*;
 use crate::middlewares::auth::auth;
-use crate::{controller::chat_controller::create_chat, models::chat::ChatState};
+use crate::models::chat::ChatState;
 
 pub fn chat_router(state: Arc<Mutex<ChatState>>) -> Router {
     Router::new()
@@ -11,5 +12,6 @@ pub fn chat_router(state: Arc<Mutex<ChatState>>) -> Router {
             "/create/:room_id",
             post(create_chat).route_layer(from_fn(auth)),
         )
+        //.route("/join/:room_id", post(join_chat))
         .layer(Extension(state))
 }

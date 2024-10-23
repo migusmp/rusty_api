@@ -1,4 +1,4 @@
-use crate::models::user::LoginUser;
+use crate::models::user::{ErrorRequest, LoginUser};
 use crate::utils::responses::ApiResponse;
 use crate::utils::user_utils::{
     create_payload, create_token_cookie, get_user_full_data, insert_user, verify_user_exists,
@@ -9,29 +9,26 @@ use axum::Json;
 use axum::{http::StatusCode, response::IntoResponse};
 use serde_json::json;
 
-pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, StatusCode> {
+pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, ErrorRequest> {
     // Establecemos la conexión con la base de datos
-    let conn = open_users_db().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let conn = open_users_db().map_err(|_| ErrorRequest::InternalError)?;
 
     // validamos que el usuario no exista
-    if verify_user_exists(&user, &conn).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? {
-        return Ok(ApiResponse::error(
-            StatusCode::BAD_REQUEST,
-            "User already exists",
-        ));
+    if verify_user_exists(&user, &conn).map_err(|_| ErrorRequest::InternalError)? {
+        return Err(ErrorRequest::UserAlreadyExists);
     }
 
     // hasheamos la contraseña en otro hilo asincrono para mejorar el rendimiento y que el hashing
     // no bloquee otras acciones del enpoint.
     let hashed_pwd = tokio::task::spawn_blocking(move || bcrypt::hash(&user.password, 4))
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? // Error en la tarea asíncrona
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?; // Error en el proceso de hash
+        .map_err(|_| ErrorRequest::InternalError)? // Error en la tarea asíncrona
+        .map_err(|_| ErrorRequest::InternalError)?; // Error en el proceso de hash
 
     // insertamos el usuario
     insert_user(&user.username, &user.email, &conn, hashed_pwd).map_err(|err| {
         eprintln!("Error al insertar: {}", err);
-        StatusCode::INTERNAL_SERVER_ERROR
+        ErrorRequest::InternalError
     })?;
 
     // Devolvemos la success response.
