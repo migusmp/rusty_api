@@ -5,6 +5,7 @@ use axum_server::{
     models::chat::ChatState,
     routes::{chat::chat_router, user::user_router},
 };
+use tower_http::cors::CorsLayer;
 
 #[tokio::main]
 async fn main() {
@@ -14,7 +15,8 @@ async fn main() {
     let app = Router::new()
         .nest("/user", user_router())
         .nest("/chat", chat_router(chat_state.clone()))
-        .route("/", get(|| async { "Welcome to the API" }));
+        .route("/", get(|| async { "Welcome to the API" }))
+        .layer(CorsLayer::permissive()); // Permitimos las cors.
 
     // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
