@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use axum::{routing::get, Router};
 use axum_server::{
@@ -9,7 +10,7 @@ use axum_server::{
 
 #[tokio::main]
 async fn main() {
-    let chat_state = Arc::new(Mutex::new(ChatState::default()));
+    let chat_state = Arc::new(RwLock::new(ChatState::default()));
 
     let cors = create_cors_layer();
     // build our application with a single route

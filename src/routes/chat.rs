@@ -1,12 +1,13 @@
 use axum::routing::get;
 use axum::{middleware::from_fn, routing::post, Extension, Router};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use crate::controller::chat_controller::*;
 use crate::middlewares::auth::auth;
 use crate::models::chat::ChatState;
 
-pub fn chat_router(state: Arc<Mutex<ChatState>>) -> Router {
+pub fn chat_router(state: Arc<RwLock<ChatState>>) -> Router {
     Router::new()
         .route(
             "/create/:room_id",

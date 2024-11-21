@@ -7,13 +7,14 @@ use axum::{
     Extension,
 };
 use futures::{SinkExt, StreamExt};
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 pub async fn create_chat(
     Path(room_id): Path<String>,
-    Extension(state): Extension<Arc<Mutex<ChatState>>>,
+    Extension(state): Extension<Arc<RwLock<ChatState>>>,
 ) -> impl IntoResponse {
-    let mut state = state.lock().unwrap();
+    let mut state = state.write().await;
     state.create_room(room_id);
     "Room created".into_response()
 }
@@ -21,7 +22,7 @@ pub async fn create_chat(
 pub async fn join_chat(
     ws: WebSocketUpgrade,
     Path(room_id): Path<String>,
-    Extension(state): Extension<Arc<Mutex<ChatState>>>,
+    Extension(state): Extension<Arc<RwLock<ChatState>>>,
     Extension(payload): Extension<Payload>,
 ) -> impl IntoResponse {
     println!("Usuario conectado: {}", payload.name);
@@ -31,13 +32,13 @@ pub async fn join_chat(
 async fn handle_socket(
     socket: WebSocket,
     room_id: String,
-    state: Arc<Mutex<ChatState>>,
+    state: Arc<RwLock<ChatState>>,
     user: Payload,
 ) {
     let (mut sender, mut receiver) = socket.split();
 
     let user_channel = {
-        let mut state = state.lock().unwrap();
+        let mut state = state.write().await;
         state.join_room(&room_id, user.name.clone())
     };
 
@@ -60,7 +61,7 @@ async fn handle_socket(
         };
 
         let message = Message::Text(format!("{}: {}", user.name, message_content));
-        let state = state.lock().unwrap();
+        let state = state.read().await;
 
         // Reenviar mensaje a todos los usuarios de la sala
         if let Some(room) = state.rooms.get(&room_id) {
@@ -76,7 +77,7 @@ async fn handle_socket(
 
     // Limpiar al usuario cuando se desconecte
     {
-        let mut state = state.lock().unwrap();
+        let mut state = state.write().await;
         if let Some(room) = state.rooms.get_mut(&room_id) {
             room.users.remove(&user.name);
             println!("Usuario {} se desconectó de la sala {}", user.name, room_id);
