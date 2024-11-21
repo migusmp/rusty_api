@@ -8,6 +8,7 @@ axum = { version = "0.7.7", features = ["macros", "ws"] }
 tower-http = { version = "0.6.1", features = ["full"] }
 futures = "0.3"
 tokio = { version = "1", features = ["full"] }
+surrealdb = "2.0.4"
 tokio-tungstenite = "0.24.0"
 bcrypt = "0.15.1"
 rusqlite = { version = "0.32.1", features = ["bundled"] } 

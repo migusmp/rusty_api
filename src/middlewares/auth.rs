@@ -11,10 +11,12 @@ use crate::utils::{responses::ApiResponse, user_utils::decode_token};
 pub async fn auth<B>(req: Request<B>, next: Next) -> impl IntoResponse {
     // Obtenemos todos los headers de la petición.
     let headers = req.headers().clone();
+    println!("headers: {:#?}", headers);
 
     // Si esta el header 'cookie' ejecutamos el siguiente codigo
     if let Some(cookie_header) = headers.get("cookie") {
         if let Ok(cookie_str) = cookie_header.to_str() {
+            println!("cookies: {}", cookie_str);
             // Spliteamos todas las cookies y obtenemos la cookie 'auth='
             for cookie in cookie_str.split(";") {
                 let cookie = cookie.trim();

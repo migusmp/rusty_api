@@ -115,14 +115,17 @@ pub fn create_payload(user_data: User) -> Result<String, jsonwebtoken::errors::E
 pub fn create_token_cookie<'a>(name_cookie: &'a str, token: Cow<'a, str>) -> Cookie<'a> {
     Cookie::build((name_cookie, token))
         .http_only(true) // Evita que sea accesible desde JavaScript.
+        .same_site(cookie::SameSite::Lax)
+        .secure(false)
         .path("/")
         .build()
 }
 
 pub fn append_cookie_to_response(res: &mut Response, cookie: Cookie) {
+    let cookie_header = cookie.to_string();
     res.headers_mut().append(
         axum::http::header::SET_COOKIE,
-        cookie.to_string().parse().unwrap(),
+        cookie_header.parse().unwrap(),
     );
 }
 
