@@ -3,10 +3,74 @@ use crate::models::user::Payload;
 use axum::extract::ws::{Message, WebSocket};
 
 use futures::{SinkExt, StreamExt};
+use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-pub async fn handle_socket_for_stats(
+pub async fn handle_socket_for_active_rooms(
+    socket: WebSocket,
+    state: Arc<RwLock<ChatState>>,
+    _user: Payload,
+) {
+    let (mut sender, mut receiver) = socket.split();
+
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                let state = state.read().await;
+                let (rooms_active, users_active, rooms_active_length) = state.active_rooms().await;
+                let data = json!({
+                    "rooms_active": rooms_active,
+                    "rooms_length": rooms_active_length,
+                    "users_active": users_active,
+                });
+
+                // Parse JSON to String.
+                if let Ok(msg) = serde_json::to_string(&data) {
+                    if sender.send(Message::Text(msg)).await.is_err() {
+                        eprintln!("Error to send rooms active stats");
+                    }
+                }
+            }
+            msg = receiver.next() => {
+                match msg {
+                    Some(Ok(Message::Text(text))) => {
+                        println!("Mensaje recibido: {}", text);
+                    },
+                    Some(Ok(Message::Binary(data))) => {
+                        println!("Mensaje binario recibido: {:?}", data);
+                    },
+                    Some(Ok(Message::Pong(_))) => {
+                        println!("Pong recibido");
+                    },
+                    Some(Ok(Message::Ping(_))) => {
+                        println!("Ping recibido");
+                    }
+                    Some(Ok(Message::Close(reason))) => {
+                        if let Some(reason) = reason {
+                            println!("Conexión cerrada: {:?}", reason);
+                        } else {
+                            println!("Conexión cerrada sin razón");
+                        }
+                        break; // Salir si la conexión se cierra
+                    },
+                    Some(Err(e)) => {
+                        eprintln!("Error en la recepción del mensaje: {}", e);
+                        break; // Salir si hay error en la recepción
+                    },
+                    None => {
+                        eprintln!("Conexión cerrada por el cliente");
+                        break; // La conexión se ha cerrado
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub async fn handle_socket_for_room_stats(
     socket: WebSocket,
     room_id: String,
     state: Arc<RwLock<ChatState>>,
@@ -14,7 +78,7 @@ pub async fn handle_socket_for_stats(
 ) {
     let (mut sender, mut receiver) = socket.split();
 
-    let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
 
     loop {
         tokio::select! {
@@ -83,7 +147,7 @@ pub async fn handle_socket(
     };
 
     // Join message.
-    let join_msg = Message::Text(format!("{} has joined the chat.", user.name));
+    let join_msg = Message::Text(format!("{} joined the chat.", user.name));
 
     // Send join message.
     {

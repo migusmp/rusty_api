@@ -1,6 +1,6 @@
-use crate::services::chat::{handle_socket, handle_socket_for_stats};
 use crate::models::chat::ChatState;
 use crate::models::user::Payload;
+use crate::services::chat::{handle_socket, handle_socket_for_active_rooms, handle_socket_for_room_stats};
 use axum::{
     extract::{Path, WebSocketUpgrade},
     response::IntoResponse,
@@ -18,13 +18,13 @@ pub async fn create_chat(
     "Room created".into_response()
 }
 
-pub async fn get_stats(
+pub async fn get_room_stats(
     ws: WebSocketUpgrade,
     Path(room_id): Path<String>,
     Extension(state): Extension<Arc<RwLock<ChatState>>>,
-    Extension(payload): Extension<Payload>
+    Extension(payload): Extension<Payload>,
 ) -> impl IntoResponse {
-   ws.on_upgrade(move |socket| handle_socket_for_stats(socket, room_id, state, payload)) 
+    ws.on_upgrade(move |socket| handle_socket_for_room_stats(socket, room_id, state, payload))
 }
 
 pub async fn join_chat(
@@ -33,8 +33,13 @@ pub async fn join_chat(
     Extension(state): Extension<Arc<RwLock<ChatState>>>,
     Extension(payload): Extension<Payload>,
 ) -> impl IntoResponse {
-    // User connect the chat.
     ws.on_upgrade(move |socket| handle_socket(socket, room_id, state, payload))
 }
 
-
+pub async fn get_active_rooms(
+    ws: WebSocketUpgrade,
+    Extension(state): Extension<Arc<RwLock<ChatState>>>,
+    Extension(payload): Extension<Payload>,
+) -> impl IntoResponse {
+   ws.on_upgrade(|socket| handle_socket_for_active_rooms(socket, state, payload)) 
+}

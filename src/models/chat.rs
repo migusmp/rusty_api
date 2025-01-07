@@ -53,4 +53,19 @@ impl ChatState {
     pub fn get_room_user_count(&self, room_id: &String) -> Option<usize> {
         self.rooms.get(room_id).map(|room| room.users.len())
     }
+
+    pub async fn active_rooms(&self) -> (Vec<String>, Vec<String>, usize) {
+        let mut active_rooms = vec![];
+        let mut users_active = vec![];
+
+        for (room_id, room) in self.rooms.clone() {
+            active_rooms.push(room_id);
+
+            for (user, _sender) in room.users {
+                users_active.push(user);
+            }
+        }
+
+        (active_rooms, users_active, self.rooms.len())
+    }
 }
