@@ -115,8 +115,11 @@ pub fn create_payload(user_data: User) -> Result<String, jsonwebtoken::errors::E
 pub fn create_token_cookie<'a>(name_cookie: &'a str, token: Cow<'a, str>) -> Cookie<'a> {
     Cookie::build((name_cookie, token))
         .http_only(true) // Evita que sea accesible desde JavaScript.
-        .same_site(cookie::SameSite::Lax)
-        .secure(false)
+        // .same_site(cookie::SameSite::Lax)
+        .same_site(cookie::SameSite::None)
+        // .secure(false)
+        .secure(true)
+        .partitioned(true)
         .path("/")
         .build()
 }
