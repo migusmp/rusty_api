@@ -14,7 +14,7 @@ pub async fn handle_socket_for_active_rooms(
 ) {
     let (mut sender, mut receiver) = socket.split();
 
-    let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(500));
 
     loop {
         tokio::select! {
@@ -78,7 +78,7 @@ pub async fn handle_socket_for_room_stats(
 ) {
     let (mut sender, mut receiver) = socket.split();
 
-    let mut interval = tokio::time::interval(std::time::Duration::from_secs(2));
+    let mut interval = tokio::time::interval(std::time::Duration::from_millis(500));
 
     loop {
         tokio::select! {

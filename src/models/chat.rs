@@ -62,6 +62,9 @@ impl ChatState {
             active_rooms.push(room_id);
 
             for (user, _sender) in room.users {
+                if users_active.contains(&user) {
+                    continue;
+                }
                 users_active.push(user);
             }
         }
