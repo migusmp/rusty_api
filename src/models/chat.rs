@@ -50,5 +50,7 @@ impl ChatState {
         }
     }
 
-    // Obtener el canal broadcast de una sala.
+    pub fn get_room_user_count(&self, room_id: &String) -> Option<usize> {
+        self.rooms.get(room_id).map(|room| room.users.len())
+    }
 }

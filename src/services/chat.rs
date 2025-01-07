@@ -7,12 +7,66 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 pub async fn handle_socket_for_stats(
-    _socket: WebSocket,
-    _room_id: String,
-    _state: Arc<RwLock<ChatState>>,
-    user: Payload,
+    socket: WebSocket,
+    room_id: String,
+    state: Arc<RwLock<ChatState>>,
+    _user: Payload,
 ) {
-    println!("{} connected for show stats.", user.name);
+    let (mut sender, mut receiver) = socket.split();
+
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(5));
+
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                // Enviar estadísticas periódicas, por ejemplo:
+                let state = state.read().await;
+                if let Some(user_count) = state.get_room_user_count(&room_id) {
+                    let msg = Message::Text(format!("{}", user_count));
+                    // Verificar si la conexión está abierta
+                    if sender.send(msg).await.is_err() {
+                        eprintln!("No se pudo enviar el mensaje, WebSocket cerrado o error en la conexión");
+                        break;
+                    }
+                }
+            },
+            msg = receiver.next() => {
+                match msg {
+                    Some(Ok(Message::Text(text))) => {
+                        println!("Mensaje recibido: {}", text);
+                    },
+                    Some(Ok(Message::Binary(data))) => {
+                        println!("Mensaje binario recibido: {:?}", data);
+                    },
+                    Some(Ok(Message::Pong(_))) => {
+                        println!("Pong recibido");
+                    },
+                    Some(Ok(Message::Ping(_))) => {
+                        println!("Ping recibido");
+                    }
+                    Some(Ok(Message::Close(reason))) => {
+                        if let Some(reason) = reason {
+                            println!("Conexión cerrada: {:?}", reason);
+                        } else {
+                            println!("Conexión cerrada sin razón");
+                        }
+                        break; // Salir si la conexión se cierra
+                    },
+                    Some(Err(e)) => {
+                        eprintln!("Error en la recepción del mensaje: {}", e);
+                        break; // Salir si hay error en la recepción
+                    },
+                    None => {
+                        eprintln!("Conexión cerrada por el cliente");
+                        break; // La conexión se ha cerrado
+                    }
+                }
+            }
+        }
+    }
+
+    // Aquí puedes agregar lógica adicional de limpieza si es necesario
+    eprintln!("Fin de la conexión WebSocket");
 }
 
 pub async fn handle_socket(

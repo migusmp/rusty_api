@@ -14,6 +14,6 @@ pub fn chat_router(state: Arc<RwLock<ChatState>>) -> Router {
             post(create_chat).route_layer(from_fn(auth)),
         )
         .route("/join/:room_id", get(join_chat).route_layer(from_fn(auth)))
-        .route("/stats/:room_id", get(get_stats))
+        .route("/stats/:room_id", get(get_stats).route_layer(from_fn(auth)))
         .layer(Extension(state))
 }
