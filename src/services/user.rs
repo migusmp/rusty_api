@@ -39,12 +39,23 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
     let conn = open_users_db().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     // Verificamos que el usuario y la contraseña son correctos.
-    if !verify_user_login(&user, &conn).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)? {
-        return Ok(ApiResponse::error(
-            StatusCode::UNAUTHORIZED,
-            "Invalid credentials",
-        ));
+    match verify_user_login(&user, &conn) {
+        Ok(user_exists) => {
+            if !user_exists {
+                return Ok(ApiResponse::error(
+                    StatusCode::BAD_REQUEST,
+                    "Invalid password",
+                ));
+            }
+        }
+        Err(_e) => {
+            return Ok(ApiResponse::error(
+                StatusCode::BAD_REQUEST,
+                "this user doesn't exist",
+            ));
+        }
     }
+
     // Recogemos la información de la BBDD del usuario.
     let user_data = tokio::task::spawn_blocking(move || get_user_full_data(&user, &conn))
         .await

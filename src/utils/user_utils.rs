@@ -19,6 +19,7 @@ pub fn verify_user_exists(user: &RegisterUser, conn: &Connection) -> Result<bool
         .map_err(|e| {
             eprintln!("Error al verificar usuario: {}", e);
             rusqlite::Error::QueryReturnedNoRows
+            // return Ok(false);
         })?;
 
     Ok(user_exists > 0)
