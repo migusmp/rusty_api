@@ -1,4 +1,6 @@
-use crate::db::db::{get_db_pool, insert_user};
+use std::sync::Arc;
+
+use crate::db::db::insert_user;
 use crate::models::user::RegisterUser;
 use crate::models::user::{ErrorRequest, LoginUser};
 use crate::utils::responses::ApiResponse;
@@ -8,14 +10,13 @@ use crate::utils::user_utils::{
 use axum::Json;
 use axum::{http::StatusCode, response::IntoResponse};
 use serde_json::json;
+use sqlx::PgPool;
 use tokio::try_join;
 
-pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, ErrorRequest> {
-    // Establecemos la conexión con la base de datos
-    let pool = get_db_pool()
-        .await
-        .map_err(|_| ErrorRequest::InternalError)?;
-
+pub async fn register(
+    user: RegisterUser,
+    pool: &Arc<PgPool>,
+) -> Result<impl IntoResponse, ErrorRequest> {
     // Realizamos las dos operaciones en paralelo: verificar si el usuario existe y hacer el hash de la contraseña
     let verify_future = verify_user_exists(&user, &pool);
 
@@ -45,9 +46,7 @@ pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, ErrorRequ
     Ok(ApiResponse::success("User created successfully"))
 }
 
-pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
-    let pool = get_db_pool().await.unwrap();
-
+pub async fn login(user: LoginUser, pool: &Arc<PgPool>) -> Result<impl IntoResponse, StatusCode> {
     // Verificamos que el usuario y la contraseña son correctos.
     match verify_user_login(&user, &pool).await {
         Ok(Some(user_data)) => {

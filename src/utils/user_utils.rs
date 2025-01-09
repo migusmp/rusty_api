@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Arc};
 
 use axum::{http::StatusCode, response::Response};
 use bcrypt::BcryptError;
@@ -11,7 +11,10 @@ use tokio::task::JoinError;
 use crate::models::user::{LoginUser, Payload, RegisterUser, User};
 
 // Verificamos que el usuario exista
-pub async fn verify_user_exists(user: &RegisterUser, pool: &PgPool) -> Result<bool, JoinError> {
+pub async fn verify_user_exists(
+    user: &RegisterUser,
+    pool: &Arc<PgPool>,
+) -> Result<bool, JoinError> {
     // Consulta SQL para verificar si el usuario existe por correo o nombre de usuario
     println!(
         "name: {:?}, email: {:?}, password: {:?}",
@@ -27,7 +30,7 @@ pub async fn verify_user_exists(user: &RegisterUser, pool: &PgPool) -> Result<bo
     )
     .bind(&user.email)
     .bind(&user.username)
-    .fetch_one(pool) // Ejecuta la consulta de forma asíncrona
+    .fetch_one(&**pool) // Ejecuta la consulta de forma asíncrona
     .await
     .unwrap();
 

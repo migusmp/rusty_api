@@ -3,19 +3,34 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::Error;
 use sqlx::PgPool;
 use std::env;
+use std::sync::Arc;
 
 // Función para obtener el pool de conexiones a la base de datos
-pub async fn get_db_pool() -> Result<PgPool, sqlx::Error> {
-    dotenv().ok();
+// pub async fn get_db_pool() -> Result<PgPool, sqlx::Error> {
+//     dotenv().ok();
+//
+//     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env file");
+//
+//     // let pool = PgPool::connect(&database_url).await?;
+//     let pool = PgPoolOptions::new()
+//         .max_connections(350)
+//         .connect(&database_url)
+//         .await?;
+//     Ok(pool)
+// }
 
+pub async fn init_db_pool() -> Arc<PgPool> {
+    dotenv().ok();
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env file");
 
-    // let pool = PgPool::connect(&database_url).await?;
     let pool = PgPoolOptions::new()
         .max_connections(350)
+        .idle_timeout(std::time::Duration::from_secs(10))
         .connect(&database_url)
-        .await?;
-    Ok(pool)
+        .await
+        .expect("Failed to connect to the database");
+
+    Arc::new(pool)
 }
 
 // Función para crear la tabla de usuarios si no existe
@@ -40,7 +55,7 @@ pub async fn create_users_table(pool: &PgPool) -> Result<(), sqlx::Error> {
 pub async fn insert_user(
     username: &String,
     email: &String,
-    pool: &PgPool,
+    pool: &Arc<PgPool>,
     hashed_pwd: &String,
 ) -> Result<(), Error> {
     let query = r#"
@@ -52,7 +67,7 @@ pub async fn insert_user(
         .bind(username)
         .bind(email)
         .bind(hashed_pwd)
-        .execute(pool) // Ejecutamos sin transacción
+        .execute(&**pool) // Ejecutamos sin transacción
         .await?;
 
     Ok(())

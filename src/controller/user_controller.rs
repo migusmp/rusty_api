@@ -1,12 +1,16 @@
+use std::sync::Arc;
+
 use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser};
 use crate::services::user::{login, register};
 use crate::utils::responses::ApiResponse;
 use axum::Extension;
 use axum::{http::StatusCode, response::IntoResponse, Form};
+use sqlx::PgPool;
 
 // Ruta de registro de usuarios.
 pub async fn user_register(
     Form(data): Form<RegisterUser>,
+    pool: Arc<PgPool>,
 ) -> Result<impl IntoResponse, ErrorRequest> {
     // Accedemos a los datos del usuario
     let username = &data.username;
@@ -36,11 +40,14 @@ pub async fn user_register(
         password.to_string(),
     );
 
-    Ok(register(new_user).await)
+    Ok(register(new_user, &pool).await)
 }
 
 // Ruta de inicio de sesión de usuarios.
-pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse, ErrorRequest> {
+pub async fn user_login(
+    Form(data): Form<LoginUser>,
+    pool: Arc<PgPool>,
+) -> Result<impl IntoResponse, ErrorRequest> {
     // Accedemos a los datos del usuario
     let username = &data.username;
     let password = &data.password;
@@ -48,7 +55,7 @@ pub async fn user_login(Form(data): Form<LoginUser>) -> Result<impl IntoResponse
     // Llamamos al servicio de registro
     let user = LoginUser::new(username.to_string(), password.to_string());
 
-    Ok(login(user).await)
+    Ok(login(user, &pool).await)
 }
 
 // Hacer ruta de logout
