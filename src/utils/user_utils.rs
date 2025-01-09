@@ -5,46 +5,72 @@ use bcrypt::BcryptError;
 use chrono::{Duration, Utc};
 use cookie::Cookie;
 use jsonwebtoken::{DecodingKey, TokenData, Validation};
-use rusqlite::{params, Connection};
+use sqlx::PgPool;
+use tokio::task::JoinError;
 
 use crate::models::user::{LoginUser, Payload, RegisterUser, User};
 
 // Verificamos que el usuario exista
-pub fn verify_user_exists(user: &RegisterUser, conn: &Connection) -> Result<bool, rusqlite::Error> {
-    let mut stmt = conn
-        .prepare("SELECT COUNT (*) FROM users WHERE email = ?1 OR name = ?2")
-        .map_err(|_| rusqlite::Error::QueryReturnedNoRows)?;
-    let user_exists: i32 = stmt
-        .query_row(params![&user.email, &user.username], |row| row.get(0))
-        .map_err(|e| {
-            eprintln!("Error al verificar usuario: {}", e);
-            rusqlite::Error::QueryReturnedNoRows
-            // return Ok(false);
-        })?;
+pub async fn verify_user_exists(user: &RegisterUser, pool: &PgPool) -> Result<bool, JoinError> {
+    // Consulta SQL para verificar si el usuario existe por correo o nombre de usuario
+    println!(
+        "name: {:?}, email: {:?}, password: {:?}",
+        user.username, user.email, user.password
+    );
 
-    Ok(user_exists > 0)
+    let result: (i64,) = sqlx::query_as(
+        r#"
+        SELECT COUNT(*) 
+        FROM users 
+        WHERE email = $1 OR username = $2
+        "#,
+    )
+    .bind(&user.email)
+    .bind(&user.username)
+    .fetch_one(pool) // Ejecuta la consulta de forma asíncrona
+    .await
+    .unwrap();
+
+    println!("Result: {:?}", result);
+
+    Ok(result.0 > 0) // Si COUNT(*) > 0, el usuario existe
 }
 
 // Función para verificar que el usuario y la contraseña son correctos
-pub fn verify_user_login(
+pub async fn verify_user_login(
     user_login: &LoginUser,
-    conn: &Connection,
-) -> Result<bool, rusqlite::Error> {
-    let mut stmt = conn
-        .prepare("SELECT password FROM users WHERE name = ?1")
-        .map_err(|_| rusqlite::Error::QueryReturnedNoRows)?;
+    pool: &PgPool,
+) -> Result<Option<User>, sqlx::Error> {
+    // Realizamos la consulta para obtener los datos del usuario por `username`.
+    let row = sqlx::query!(
+        r#"
+        SELECT id, username, email, password, created_at
+        FROM users
+        WHERE username = $1
+        "#,
+        user_login.username
+    )
+    .fetch_optional(pool)
+    .await?;
 
-    let stored_password: String = stmt
-        .query_row(params![&user_login.username], |row| row.get(0))
-        .map_err(|e| {
-            eprintln!("Error al verificar usuario: {}", e);
-            rusqlite::Error::QueryReturnedNoRows
-        })?;
+    // Si no se encuentra el usuario, devolvemos `None`.
+    let row = match row {
+        Some(row) => row,
+        None => return Ok(None),
+    };
 
-    if hashed_pwd(&user_login.password, &stored_password).unwrap() {
-        Ok(true)
+    if hashed_pwd(&user_login.password, &row.password).unwrap() {
+        let created_at = row.created_at.map(|dt| dt.to_string());
+
+        Ok(Some(User {
+            id: row.id,
+            name: row.username,
+            email: row.email,
+            password: row.password,
+            created_at,
+        }))
     } else {
-        Ok(false)
+        Ok(None)
     }
 }
 
@@ -52,53 +78,7 @@ pub fn hashed_pwd(pwd: &String, hashed_pwd: &str) -> Result<bool, BcryptError> {
     bcrypt::verify(pwd, hashed_pwd)
 }
 
-// Guardamos al usuario en la BBDD.
-pub fn insert_user(
-    username: &String,
-    email: &String,
-    conn: &Connection,
-    hashed_pwd: String,
-) -> Result<(), rusqlite::Error> {
-    conn.execute(
-        "INSERT INTO users (name, email, password) VALUES (?1, ?2, ?3)",
-        params![username, email, hashed_pwd],
-    )
-    .map_err(|e| {
-        eprintln!("Error al insertar usuario: {}", e);
-        e
-    })?;
-
-    Ok(())
-}
-
-// Función para obtener todos los datos de un determinado usuario en la BBDD.
-pub fn get_user_full_data(user: &LoginUser, conn: &Connection) -> Result<User, rusqlite::Error> {
-    let mut stmt = conn
-        .prepare("SELECT id, name, email, password, created_at FROM users WHERE name = ?1")
-        .map_err(|e| {
-            eprintln!("Error al preparar la consulta: {}", e);
-            e
-        })?;
-
-    let user_data = stmt
-        .query_row(params![&user.username], |row| {
-            Ok(User {
-                id: row.get::<_, i64>(0)?,
-                name: row.get(1)?,
-                email: row.get(2)?,
-                password: row.get(3)?,
-                created_at: row.get(4)?,
-            })
-        })
-        .map_err(|e| {
-            eprintln!("Error al obtener los datos del usuario: {}", e);
-            e
-        })?;
-
-    Ok(user_data)
-}
-
-pub fn create_payload(user_data: User) -> Result<String, jsonwebtoken::errors::Error> {
+pub async fn create_payload(user_data: User) -> Result<String, jsonwebtoken::errors::Error> {
     let iat = Utc::now().timestamp(); // tiempo actual
     let exp = (Utc::now() + Duration::hours(1)).timestamp(); // 1 hora de tiempo de expiración.
     let user_payload = Payload::new(
@@ -113,7 +93,7 @@ pub fn create_payload(user_data: User) -> Result<String, jsonwebtoken::errors::E
     user_payload.token()
 }
 
-pub fn create_token_cookie<'a>(name_cookie: &'a str, token: Cow<'a, str>) -> Cookie<'a> {
+pub async fn create_token_cookie<'a>(name_cookie: &'a str, token: Cow<'a, str>) -> Cookie<'a> {
     Cookie::build((name_cookie, token))
         .http_only(true) // Evita que sea accesible desde JavaScript.
         // .same_site(cookie::SameSite::Lax)

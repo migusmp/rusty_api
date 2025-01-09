@@ -1,52 +1,78 @@
+use crate::db::db::{get_db_pool, insert_user};
+use crate::models::user::RegisterUser;
 use crate::models::user::{ErrorRequest, LoginUser};
 use crate::utils::responses::ApiResponse;
 use crate::utils::user_utils::{
-    create_payload, create_token_cookie, get_user_full_data, insert_user, verify_user_exists,
-    verify_user_login,
+    create_payload, create_token_cookie, verify_user_exists, verify_user_login,
 };
-use crate::{db::connection::open_users_db, models::user::RegisterUser};
 use axum::Json;
 use axum::{http::StatusCode, response::IntoResponse};
 use serde_json::json;
+use tokio::try_join;
 
 pub async fn register(user: RegisterUser) -> Result<impl IntoResponse, ErrorRequest> {
     // Establecemos la conexión con la base de datos
-    let conn = open_users_db().map_err(|_| ErrorRequest::InternalError)?;
+    let pool = get_db_pool()
+        .await
+        .map_err(|_| ErrorRequest::InternalError)?;
 
-    // validamos que el usuario no exista
-    if verify_user_exists(&user, &conn).map_err(|_| ErrorRequest::InternalError)? {
+    // Realizamos las dos operaciones en paralelo: verificar si el usuario existe y hacer el hash de la contraseña
+    let verify_future = verify_user_exists(&user, &pool);
+
+    let hash_pwd = tokio::task::spawn_blocking({
+        let password = user.password.clone(); // Clonamos la contraseña
+        move || bcrypt::hash(&password, 4)
+    }); // Esperamos los resultados de ambas operaciones de forma concurrente
+    let (verify_result, hashed_pwd_result) =
+        try_join!(verify_future, hash_pwd).map_err(|_| ErrorRequest::InternalError)?;
+
+    // Si el usuario ya existe, devolvemos un error
+    if verify_result {
         return Err(ErrorRequest::UserAlreadyExists);
     }
 
-    // hasheamos la contraseña en otro hilo asincrono para mejorar el rendimiento y que el hashing
-    // no bloquee otras acciones del enpoint.
-    let hashed_pwd = tokio::task::spawn_blocking(move || bcrypt::hash(&user.password, 4))
-        .await
-        .map_err(|_| ErrorRequest::InternalError)? // Error en la tarea asíncrona
-        .map_err(|_| ErrorRequest::InternalError)?; // Error en el proceso de hash
+    let hashed_pwd = hashed_pwd_result.map_err(|_| ErrorRequest::InternalError)?;
 
     // insertamos el usuario
-    insert_user(&user.username, &user.email, &conn, hashed_pwd).map_err(|err| {
-        eprintln!("Error al insertar: {}", err);
-        ErrorRequest::InternalError
-    })?;
+    insert_user(&user.username, &user.email, &pool, &hashed_pwd)
+        .await
+        .map_err(|err| {
+            eprintln!("Error al insertar: {}", err);
+            ErrorRequest::InternalError
+        })?;
 
     // Devolvemos la success response.
     Ok(ApiResponse::success("User created successfully"))
 }
 
 pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
-    let conn = open_users_db().map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    let pool = get_db_pool().await.unwrap();
 
     // Verificamos que el usuario y la contraseña son correctos.
-    match verify_user_login(&user, &conn) {
-        Ok(user_exists) => {
-            if !user_exists {
-                return Ok(ApiResponse::error(
-                    StatusCode::BAD_REQUEST,
-                    "Invalid password",
-                ));
-            }
+    match verify_user_login(&user, &pool).await {
+        Ok(Some(user_data)) => {
+            // Creamos el payload.
+            let token = create_payload(user_data)
+                .await
+                .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+            let token_cookie = create_token_cookie("auth", std::borrow::Cow::Owned(token)).await;
+
+            Ok(ApiResponse::SuccessWithCookie(
+                StatusCode::OK,
+                Json(json!({
+                    "status": "success",
+                    "message": "Login successful",
+                })),
+                token_cookie,
+            ))
+        }
+        Ok(None) => {
+            // Si la contraseña es incorrecta
+            Ok(ApiResponse::error(
+                StatusCode::BAD_REQUEST,
+                "Invalid password or user doesn't exist",
+            ))
         }
         Err(_e) => {
             return Ok(ApiResponse::error(
@@ -55,33 +81,4 @@ pub async fn login(user: LoginUser) -> Result<impl IntoResponse, StatusCode> {
             ));
         }
     }
-
-    // Recogemos la información de la BBDD del usuario.
-    let user_data = tokio::task::spawn_blocking(move || get_user_full_data(&user, &conn))
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-
-    // Creamos el payload.
-    let token = tokio::task::spawn_blocking(move || create_payload(user_data))
-        .await
-        .map_err(|_| {
-            eprintln!("Error al crear el token");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?
-        .map_err(|_| {
-            eprintln!("Error al crear el payload");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    // Creamos la cookie con el token.
-    let token_cookie = create_token_cookie("auth", std::borrow::Cow::Owned(token)); // Si la contraseña y el usuario son correctos creamos el token de seguridad.
-    Ok(ApiResponse::SuccessWithCookie(
-        StatusCode::OK,
-        Json(json!({
-            "status": "success",
-            "message": "Login successful",
-        })),
-        token_cookie,
-    ))
 }

@@ -3,7 +3,7 @@ use crate::utils::responses::ErrorResponse;
 use axum::{http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct RegisterUser {
     pub username: String,
     pub email: String,
@@ -18,20 +18,20 @@ pub struct LoginUser {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     pub email: String,
     pub password: String,
-    pub created_at: String,
+    pub created_at: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Payload {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     pub email: String,
     pub password: String,
-    pub created_at: String,
+    pub created_at: Option<String>,
     pub exp: i64,
     pub iat: i64,
 }
@@ -81,14 +81,19 @@ impl LoginUser {
 
 impl Payload {
     pub fn new(
-        id: i64,
+        id: i32,
         name: String,
         email: String,
         password: String,
-        created_at: String,
+        created_at: Option<String>,
         exp: i64,
         iat: i64,
     ) -> Self {
+        let created_at = match created_at {
+            Some(datetime) => Some(datetime.to_string()),
+            None => None,
+        };
+
         Payload {
             id,
             name,

@@ -20,7 +20,7 @@ mod tests {
     #[tokio::test]
     async fn test_login_success_response() {
         let client = Client::new();
-        let form_data = [("username", "test"), ("password", "1234")];
+        let form_data = [("username", "migus"), ("password", "1234")];
 
         let response = client
             .post("http://127.0.0.1:3000/user/login")
@@ -72,7 +72,7 @@ mod tests {
     #[tokio::test]
     async fn test_login_error_invalid_password() {
         let client = Client::new();
-        let form_data = [("username", "prueba8"), ("password", "123")];
+        let form_data = [("username", "migus"), ("password", "123")];
 
         let response = client
             .post("http://127.0.0.1:3000/user/login")
@@ -98,7 +98,7 @@ mod tests {
     async fn test_register_user_already_exists() {
         let client = Client::new();
         let form_data = [
-            ("username", "test"),
+            ("username", "migus"),
             ("password", "1234"),
             ("email", "test@example.com"),
         ];

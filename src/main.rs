@@ -3,6 +3,7 @@ use tokio::sync::RwLock;
 
 use axum::{routing::get, Router};
 use axum_server::{
+    db::db::{delete_all_users, get_db_pool},
     models::chat::ChatState,
     routes::{chat::chat_router, user::user_router},
     utils::cors::create_cors_layer,
@@ -10,6 +11,9 @@ use axum_server::{
 
 #[tokio::main]
 async fn main() {
+    let pool = get_db_pool().await.unwrap();
+    let _ = delete_all_users(&pool).await;
+
     let chat_state = Arc::new(RwLock::new(ChatState::default()));
 
     let cors = create_cors_layer();
