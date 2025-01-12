@@ -43,6 +43,8 @@ pub enum ErrorRequest {
     PasswordInvalid,
     UserAlreadyExists,
     InternalError,
+    InvalidFriendRequest,
+    DuplicateFriendRequest,
 }
 
 impl IntoResponse for ErrorRequest {
@@ -54,6 +56,13 @@ impl IntoResponse for ErrorRequest {
             ErrorRequest::PasswordInvalid => (StatusCode::BAD_REQUEST, "invalid password"),
             ErrorRequest::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
             ErrorRequest::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal error"),
+            ErrorRequest::InvalidFriendRequest => (
+                StatusCode::BAD_REQUEST,
+                "You can't add yourself as a friend",
+            ),
+            ErrorRequest::DuplicateFriendRequest => {
+                (StatusCode::OK, "You requested frienship before")
+            }
         };
         let body = Json(ErrorResponse {
             status: "error".to_string(),

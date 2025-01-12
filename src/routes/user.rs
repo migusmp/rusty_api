@@ -7,13 +7,21 @@ use axum::Router;
 use sqlx::PgPool;
 
 pub fn user_router(pool: Arc<PgPool>) -> Router {
-    let pool_for_register = pool.clone();
     Router::new()
         .route(
             "/register",
-            post(move |data| user_register(data, pool_for_register)),
+            post({
+                let pool = pool.clone();
+                move |data| user_register(data, pool)
+            }),
         )
-        .route("/login", post(move |data| user_login(data, pool.clone())))
+        .route(
+            "/login",
+            post({
+                let pool = pool.clone();
+                move |data| user_login(data, pool)
+            }),
+        )
         .route(
             "/logout",
             post(user_logout).route_layer(axum::middleware::from_fn(auth)),

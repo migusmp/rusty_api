@@ -1,3 +1,4 @@
+use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, PartialEq)]
@@ -12,10 +13,71 @@ struct SuccessResponse {
     message: String,
 }
 
+fn generate_random_string(len: usize) -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(len)
+        .map(char::from)
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum_server::{
+        db::db::init_db_pool, models::user::User, utils::user_utils::create_payload,
+    };
     use reqwest::Client;
+    use sqlx::query;
+    const TOKEN: &str = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MjMxMjUsIm5hbWUiOiJwYWNvIiwiZW1haWwiOiJwYWNvQGV4YW1wbGUuY29tIiwicGFzc3dvcmQiOiIkMmIkMDQkV01LVS5nV0t0RUFiSEZJUThLSkhwZVlhMml4NVFHTVBJZEdGa1BUTllCY0JsdmVtRkxFUVMiLCJjcmVhdGVkX2F0IjoiMjAyNS0wMS0xMCAxNjoxNToxOC42NzA5MjIgKzAwOjAwOjAwIiwiZXhwIjoxNzM2NTI5MzI3LCJpYXQiOjE3MzY1MjU3Mjd9.m71DDMrQZaK3uFFfN-VSWRIwwo1X-r9m7zu29nKbU64";
+
+    #[tokio::test]
+    async fn test_logout_endpoint() {
+        let user_data = User {
+            id: 123432,
+            name: String::from("Meguu"),
+            email: String::from("Meguu@example.com"),
+            password: String::from("1234"),
+            created_at: Some(String::from("1233, 445")),
+        };
+        let payload = create_payload(user_data).await.unwrap();
+
+        let client = Client::new();
+        let response = client
+            .post("http://127.0.0.1:3000/user/logout")
+            .header("Cookie", format!("auth={}", payload))
+            .send()
+            .await
+            .unwrap();
+
+        println!("Response: {:?}", response);
+
+        // Verifica el estado de la respuesta
+        assert_eq!(response.status(), 200);
+    }
+
+    #[tokio::test]
+    async fn test_protected_endpoint_with_jwt_cookie() {
+        let user_data = User {
+            id: 123432,
+            name: String::from("Meguu"),
+            email: String::from("Meguu@example.com"),
+            password: String::from("1234"),
+            created_at: Some(String::from("1233, 445")),
+        };
+        let payload = create_payload(user_data).await.unwrap();
+
+        let client = Client::new();
+        let response = client
+            .get("http://127.0.0.1:3000/user/info")
+            .header("Cookie", format!("auth={}", payload))
+            .send()
+            .await
+            .unwrap();
+
+        // Verifica el estado de la respuesta
+        assert_eq!(response.status(), 200);
+    }
 
     #[tokio::test]
     async fn test_login_success_response() {
@@ -46,31 +108,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_login_error_nonexistent_user() {
-        let client = Client::new();
-        let form_data = [("username", "dsahdbhdbasd"), ("password", "dsahdbhdbasd")];
-
-        let response = client
-            .post("http://127.0.0.1:3000/user/login")
-            .form(&form_data)
-            .send()
-            .await
-            .expect("Error to send request to server");
-
-        assert_eq!(response.status(), 400);
-        let json_body: ErrorResponse = response.json().await.unwrap();
-
-        assert_eq!(
-            json_body,
-            ErrorResponse {
-                status: "error".to_string(),
-                message: "this user doesn't exist".to_string(),
-            }
-        )
-    }
-
-    #[tokio::test]
-    async fn test_login_error_invalid_password() {
+    async fn test_login_error_invalid_credentials() {
         let client = Client::new();
         let form_data = [("username", "migus"), ("password", "123")];
 
@@ -89,7 +127,7 @@ mod tests {
             json_data,
             ErrorResponse {
                 status: "error".to_string(),
-                message: "Invalid password".to_string()
+                message: "Invalid password or user doesn't exist".to_string()
             }
         );
     }
@@ -124,11 +162,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_register_user() {
+        let rand_str = generate_random_string(8);
+        let username = format!("test{}", rand_str);
+        let email = format!("{}@example.com", username);
+        let password = "1234";
+
         let client = Client::new();
         let form_data = [
-            ("username", "prueba15"),
-            ("password", "1234"),
-            ("email", "prueba15@example.com"),
+            ("username", &username),
+            ("password", &password.to_string()),
+            ("email", &email),
         ];
 
         let response = client
@@ -149,5 +192,13 @@ mod tests {
                 message: "User created successfully".to_string()
             }
         );
+    }
+
+    #[tokio::test]
+    async fn test_init_db_pool() {
+        let pool = init_db_pool().await;
+
+        let result = query("SELECT 1").execute(pool.as_ref()).await;
+        assert!(result.is_ok(), "Database connection or query failed");
     }
 }
