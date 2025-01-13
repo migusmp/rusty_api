@@ -91,6 +91,38 @@ impl AppState {
         }
     }
 
+    pub async fn accept_friend_notification(
+        &self,
+        friend_id: i32,
+        user_name: String,
+        user_id: i32,
+    ) -> Result<(), String> {
+        let notifications = self.friend_notifications.lock().await;
+        let message = format!("{} accept your friend request!", user_name);
+
+        let message = FriendNotification {
+            type_msg: "AFR".to_string(),
+            user_id,
+            user_name,
+            status: "success".to_string(),
+            message,
+        };
+
+        let json_message = match serde_json::to_string(&message) {
+            Ok(msg) => msg,
+            Err(_) => return Err(format!("Failed to serialize the notification")),
+        };
+
+        if let Some(sender) = notifications.get(&friend_id) {
+            match sender.try_send(json_message) {
+                Ok(_) => Ok(()),
+                Err(_e) => Err(format!("No se pudo enviar la notificacion a {}", friend_id)),
+            }
+        } else {
+            Err(format!("El usuario {} no esta conectado", friend_id))
+        }
+    }
+
     pub async fn add_user_to_global_broadcast(&self) -> broadcast::Receiver<String> {
         // Crea un nuevo receptor para el broadcast
         let (_tx, rx) = broadcast::channel::<String>(100); // Buffer de 100 mensajes

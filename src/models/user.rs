@@ -45,6 +45,7 @@ pub enum ErrorRequest {
     InternalError,
     InvalidFriendRequest,
     DuplicateFriendRequest,
+    NoFriendRequestFound,
 }
 
 impl IntoResponse for ErrorRequest {
@@ -62,6 +63,9 @@ impl IntoResponse for ErrorRequest {
             ),
             ErrorRequest::DuplicateFriendRequest => {
                 (StatusCode::OK, "You requested frienship before")
+            }
+            ErrorRequest::NoFriendRequestFound => {
+                (StatusCode::BAD_REQUEST, "No friend request found")
             }
         };
         let body = Json(ErrorResponse {

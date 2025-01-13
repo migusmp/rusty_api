@@ -63,3 +63,74 @@ pub async fn send_friend_request(
         }
     }
 }
+
+
+pub async fn accept_friend_request(
+    pool: Arc<PgPool>,
+    Extension(payload): Extension<Payload>,
+    Path(user_requested_friend_id): Path<String>,
+    app_state: Arc<AppState>,
+) -> Result<impl IntoResponse, ErrorRequest> {
+
+    let friend_requested_id = match user_requested_friend_id.parse::<i32>() {
+        Ok(n) => n,
+        Err(_) => return Err(ErrorRequest::InternalError),
+    };
+
+    if &payload.id == &friend_requested_id {
+        return Err(ErrorRequest::InvalidFriendRequest);
+    }
+
+    // Verificar si la solicitud de amistad existe y está en estado 'pending'
+    let existing_request = sqlx::query_scalar!(
+        "SELECT 1 FROM friend_requests WHERE user_id = $1 AND friend_id = $2 AND status = 'pending'",
+        friend_requested_id,
+        payload.id
+    )
+    .fetch_optional(&*pool)
+    .await;
+
+    match existing_request {
+        Ok(Some(_)) => {
+            // Solicitud de amistad existente y en estado 'pending'
+            // Actualizar el estado a 'accepted'
+            let update_request = sqlx::query!(
+                "UPDATE friend_requests SET status = 'accepted' WHERE user_id = $1 AND friend_id = $2",
+                friend_requested_id,
+                payload.id
+            )
+            .execute(&*pool)
+            .await;
+
+            match update_request {
+                Ok(_) => {
+                    // Aquí podrías agregar la relación en otra tabla de 'friends'
+                    // Insertar en la tabla `friends` para hacer efectiva la amistad
+                    let add_friend = sqlx::query!(
+                        "INSERT INTO friends (user_id, friend_id) VALUES ($1, $2), ($2, $1)",
+                        friend_requested_id,
+                        payload.id
+                    )
+                    .execute(&*pool)
+                    .await;
+
+                    match add_friend {
+                        Ok(_) => {
+                            match app_state.accept_friend_notification(friend_requested_id, payload.name, payload.id).await {
+                                Ok(_) => Ok(ApiResponse::success("Friend add successfully")),
+                                Err(_e) => return Err(ErrorRequest::InternalError)
+                            }
+                        },
+                        Err(_) => Err(ErrorRequest::InternalError),
+                    }
+                },
+                Err(_) => Err(ErrorRequest::InternalError),
+            }
+        }
+        Ok(None) => {
+            // No existe una solicitud de amistad en estado 'pending'
+            Err(ErrorRequest::NoFriendRequestFound)
+        }
+        Err(_) => Err(ErrorRequest::InternalError),
+    }
+}
