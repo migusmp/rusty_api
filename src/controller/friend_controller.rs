@@ -7,7 +7,7 @@ pub async fn send_friend_request(
     pool: Arc<PgPool>,
     Extension(payload): Extension<Payload>,
     Path(friend_id): Path<String>,
-    _app_state: Arc<AppState>
+    app_state: Arc<AppState>
 ) -> Result<impl IntoResponse, ErrorRequest> {
 
     let friend_id = match friend_id.parse::<i32>() {
@@ -51,9 +51,16 @@ pub async fn send_friend_request(
     .execute(&*pool)
     .await;
 
-    match result {
-        Ok(_) => Ok(ApiResponse::success("User friend requested successfully")),
-        Err(_) => Err(ErrorRequest::InternalError), 
+    if result.is_err() {
+        return Err(ErrorRequest::InternalError);
     }
 
+    let user_name = payload.name.clone();
+    match app_state.send_friend_notification(friend_id, &user_name).await {
+        Ok(_) => Ok(ApiResponse::success("User friend requested succesfully")),
+        Err(e) => {
+            eprintln!("Error enviando notificación: {}", e);
+            Ok(ApiResponse::success("friend request sent, but user is not connected"))
+        }
+    }
 }

@@ -1,6 +1,9 @@
 use super::{chat::chat_router, friend::friend_router, user::user_router};
-use crate::{models::chat::ChatState, state::app_state::AppState};
-use axum::Router;
+use crate::{
+    controller::ws_controller::handle_ws_connection, middlewares::auth::auth,
+    models::chat::ChatState, state::app_state::AppState,
+};
+use axum::{middleware::from_fn, routing::get, Router};
 use sqlx::{Pool, Postgres};
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -13,6 +16,14 @@ pub fn main_router(
     Router::new()
         // Poner ruta para manejar la conexión websocket con el cliente y registrarlo en todos los
         // canales globales del AppState.
+        .route(
+            "/ws",
+            get({
+                let app_state = app_state.clone();
+                move |payload, ws| handle_ws_connection(ws, app_state, payload)
+            })
+            .route_layer(from_fn(auth)),
+        )
         .nest("/user", user_router(pool.clone()))
         .nest("/chat", chat_router(chat_state.clone(), pool.clone()))
         .nest("/friend", friend_router(pool.clone(), app_state.clone()))

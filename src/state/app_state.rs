@@ -3,9 +3,8 @@ use tokio::sync::{broadcast, mpsc, Mutex};
 
 pub struct AppState {
     pub global_broadcast: broadcast::Sender<String>,
-
+    pub user_connections: Arc<Mutex<HashMap<i32, mpsc::Sender<String>>>>,
     pub friend_notifications: Arc<Mutex<HashMap<i32, mpsc::Sender<String>>>>,
-
     pub config: AppConfig,
 }
 
@@ -26,12 +25,23 @@ impl AppState {
         let (global_broadcast, _) = broadcast::channel::<String>(1000);
         Self {
             global_broadcast,
+            user_connections: Arc::new(Mutex::new(HashMap::new())),
             friend_notifications: Arc::new(Mutex::new(HashMap::new())),
             config: AppConfig::default(),
         }
     }
 
-    // Método para añadir un usuario conectado
+    pub async fn add_user_connection(&self, user_id: i32, sender: mpsc::Sender<String>) {
+        let mut connections = self.user_connections.lock().await;
+        connections.insert(user_id, sender);
+    }
+
+    pub async fn remove_user_connection(&self, user_id: i32) {
+        let mut connections = self.user_connections.lock().await;
+        connections.remove(&user_id);
+    }
+
+    // Método para añadir un usuario conectado a las notificaciones.
     pub async fn add_user_to_friend_notifications(&self, user_id: i32) -> mpsc::Receiver<String> {
         let (sender, receiver) = mpsc::channel::<String>(100); // Crear canal para el usuario
         let mut notifications = self.friend_notifications.lock().await;
@@ -57,7 +67,7 @@ impl AppState {
         }
     }
 
-    pub fn add_user_to_global_broadcast(&self) -> broadcast::Receiver<String> {
+    pub async fn add_user_to_global_broadcast(&self) -> broadcast::Receiver<String> {
         // Crea un nuevo receptor para el broadcast
         let (_tx, rx) = broadcast::channel::<String>(100); // Buffer de 100 mensajes
 
@@ -65,7 +75,7 @@ impl AppState {
     }
 
     // Método para enviar un mensaje global a todos los usuarios
-    pub fn send_global_broadcast(&self, message: String) {
+    pub async fn send_global_broadcast(&self, message: String) {
         let _ = self.global_broadcast.send(message); // Enviar el mensaje al canal global
     }
 }

@@ -15,13 +15,7 @@ pub fn user_router(pool: Arc<PgPool>) -> Router {
                 move |data| user_register(data, pool)
             }),
         )
-        .route(
-            "/login",
-            post({
-                let pool = pool.clone();
-                move |data| user_login(data, pool)
-            }),
-        )
+        .route("/login", post(move |data| user_login(data, pool.clone())))
         .route(
             "/logout",
             post(user_logout).route_layer(axum::middleware::from_fn(auth)),

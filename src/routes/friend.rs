@@ -13,8 +13,8 @@ pub fn friend_router(pool: Arc<PgPool>, app_state: Arc<AppState>) -> Router {
         "/add/:friend_id",
         post({
             let pool_for_friend_add = pool.clone();
-            move |friend_id, data| {
-                send_friend_request(pool_for_friend_add, friend_id, data, app_state)
+            move |payload, path_data| {
+                send_friend_request(pool_for_friend_add, payload, path_data, app_state)
             }
         })
         .route_layer(axum::middleware::from_fn(auth)),
