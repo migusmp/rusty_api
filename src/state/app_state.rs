@@ -6,6 +6,7 @@ pub struct AppState {
     pub global_broadcast: broadcast::Sender<String>,
     pub user_connections: Arc<Mutex<HashMap<i32, mpsc::Sender<String>>>>,
     pub friend_notifications: Arc<Mutex<HashMap<i32, mpsc::Sender<String>>>>,
+    pub undelivered_messages: Arc<Mutex<HashMap<i32, Vec<String>>>>,
     pub config: AppConfig,
 }
 
@@ -37,6 +38,7 @@ impl AppState {
             global_broadcast,
             user_connections: Arc::new(Mutex::new(HashMap::new())),
             friend_notifications: Arc::new(Mutex::new(HashMap::new())),
+            undelivered_messages: Arc::new(Mutex::new(HashMap::new())),
             config: AppConfig::default(),
         }
     }
@@ -82,12 +84,37 @@ impl AppState {
         };
 
         if let Some(sender) = notifications.get(&friend_id) {
-            match sender.try_send(json_message) {
+            match sender.try_send(json_message.clone()) {
                 Ok(_) => Ok(()),
-                Err(_e) => Err(format!("No se pudo enviar la notificacion a {}", friend_id)),
+                Err(_e) => {
+                    // Si no se puede enviar almacenamos el mensaje para cuando el usuario se
+                    // conecte.
+                    self.store_undelivered_message(friend_id, json_message)
+                        .await;
+                    Err(format!("Unable to send notification to {}", friend_id))
+                }
             }
         } else {
+            self.store_undelivered_message(friend_id, json_message)
+                .await;
             Err(format!("El usuario {} no esta conectado", friend_id))
+        }
+    }
+
+    async fn store_undelivered_message(&self, user_id: i32, message: String) {
+        let mut undelivered = self.undelivered_messages.lock().await;
+        undelivered.entry(user_id).or_default().push(message);
+    }
+
+    pub async fn deliver_undelivered_messages(&self, user_id: i32) {
+        let mut undelivered = self.undelivered_messages.lock().await;
+        if let Some(messages) = undelivered.remove(&user_id) {
+            let notifications = self.friend_notifications.lock().await;
+            if let Some(sender) = notifications.get(&user_id) {
+                for message in messages {
+                    let _ = sender.try_send(message);
+                }
+            }
         }
     }
 
@@ -114,11 +141,17 @@ impl AppState {
         };
 
         if let Some(sender) = notifications.get(&friend_id) {
-            match sender.try_send(json_message) {
+            match sender.try_send(json_message.clone()) {
                 Ok(_) => Ok(()),
-                Err(_e) => Err(format!("No se pudo enviar la notificacion a {}", friend_id)),
+                Err(_e) => {
+                    self.store_undelivered_message(friend_id, json_message)
+                        .await;
+                    Err(format!("No se pudo enviar la notificacion a {}", friend_id))
+                }
             }
         } else {
+            self.store_undelivered_message(friend_id, json_message)
+                .await;
             Err(format!("El usuario {} no esta conectado", friend_id))
         }
     }

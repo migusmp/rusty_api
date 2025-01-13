@@ -118,7 +118,9 @@ pub async fn accept_friend_request(
                         Ok(_) => {
                             match app_state.accept_friend_notification(friend_requested_id, payload.name, payload.id).await {
                                 Ok(_) => Ok(ApiResponse::success("Friend add successfully")),
-                                Err(_e) => return Err(ErrorRequest::InternalError)
+                                Err(_e) => {
+                                    return Err(ErrorRequest::InternalError)
+                                }
                             }
                         },
                         Err(_) => Err(ErrorRequest::InternalError),

@@ -26,6 +26,9 @@ pub async fn handle_ws_connection(
     let notifications_receiver = app_state.add_user_to_friend_notifications(user_id).await;
     let application_broadcast_receiver = app_state.add_user_to_global_broadcast().await;
 
+    // Comprobamos si tiene mensajes pendientes y se los enviamos.
+    app_state.deliver_undelivered_messages(payload.id).await;
+
     ws.on_upgrade(|socket| {
         handle_socket_connection(
             socket,
