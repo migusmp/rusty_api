@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{broadcast, mpsc, Mutex};
 
@@ -18,6 +19,15 @@ impl Default for AppConfig {
             app_name: String::from("Migus App"),
         }
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct FriendNotification {
+    pub type_msg: String,
+    pub status: String,
+    pub user_id: i32,
+    pub user_name: String,
+    pub message: String,
 }
 
 impl AppState {
@@ -52,13 +62,27 @@ impl AppState {
     pub async fn send_friend_notification(
         &self,
         friend_id: i32,
-        user_name: &String,
+        user_name: String,
+        user_id: i32,
     ) -> Result<(), String> {
         let notifications = self.friend_notifications.lock().await;
         let message = format!("{} send to you a friend request!", user_name);
 
+        let message = FriendNotification {
+            type_msg: "FR".to_string(),
+            user_id,
+            user_name,
+            status: "pending".to_string(),
+            message,
+        };
+
+        let json_message = match serde_json::to_string(&message) {
+            Ok(msg) => msg,
+            Err(_) => return Err(format!("Failed to serialize the notification")),
+        };
+
         if let Some(sender) = notifications.get(&friend_id) {
-            match sender.try_send(message) {
+            match sender.try_send(json_message) {
                 Ok(_) => Ok(()),
                 Err(_e) => Err(format!("No se pudo enviar la notificacion a {}", friend_id)),
             }

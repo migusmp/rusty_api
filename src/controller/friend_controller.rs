@@ -55,8 +55,7 @@ pub async fn send_friend_request(
         return Err(ErrorRequest::InternalError);
     }
 
-    let user_name = payload.name.clone();
-    match app_state.send_friend_notification(friend_id, &user_name).await {
+    match app_state.send_friend_notification(friend_id, payload.name, payload.id).await {
         Ok(_) => Ok(ApiResponse::success("User friend requested succesfully")),
         Err(e) => {
             eprintln!("Error enviando notificación: {}", e);
