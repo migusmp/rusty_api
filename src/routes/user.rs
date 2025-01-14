@@ -24,4 +24,5 @@ pub fn user_router(pool: Arc<PgPool>) -> Router {
             "/info",
             get(user_info).route_layer(axum::middleware::from_fn(auth)),
         )
+        .route("/upload", post(upload_image))
 }

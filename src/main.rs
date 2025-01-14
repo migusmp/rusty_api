@@ -10,7 +10,7 @@ use axum_server::{
 #[tokio::main]
 async fn main() {
     let pool = init_db_pool().await;
-    // let _ = delete_all_users(&pool).await;
+    // let _ = delete_all_db(&pool).await;
 
     let chat_state = Arc::new(RwLock::new(ChatState::default()));
     let app_state = Arc::new(AppState::new());

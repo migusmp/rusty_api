@@ -13,9 +13,11 @@ pub fn main_router(
     chat_state: Arc<RwLock<ChatState>>,
     app_state: Arc<AppState>,
 ) -> Router {
+    let user_router = user_router(pool.clone());
+    let chat_router = chat_router(chat_state.clone(), pool.clone());
+    let friend_router = friend_router(pool.clone(), app_state.clone());
+
     Router::new()
-        // Poner ruta para manejar la conexión websocket con el cliente y registrarlo en todos los
-        // canales globales del AppState.
         .route(
             "/ws",
             get({
@@ -24,7 +26,7 @@ pub fn main_router(
             })
             .route_layer(from_fn(auth)),
         )
-        .nest("/user", user_router(pool.clone()))
-        .nest("/chat", chat_router(chat_state.clone(), pool.clone()))
-        .nest("/friend", friend_router(pool.clone(), app_state.clone()))
+        .nest("/user", user_router)
+        .nest("/chat", chat_router)
+        .nest("/friend", friend_router)
 }

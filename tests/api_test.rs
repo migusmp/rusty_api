@@ -29,7 +29,6 @@ mod tests {
     };
     use reqwest::Client;
     use sqlx::query;
-    const TOKEN: &str = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpZCI6MjMxMjUsIm5hbWUiOiJwYWNvIiwiZW1haWwiOiJwYWNvQGV4YW1wbGUuY29tIiwicGFzc3dvcmQiOiIkMmIkMDQkV01LVS5nV0t0RUFiSEZJUThLSkhwZVlhMml4NVFHTVBJZEdGa1BUTllCY0JsdmVtRkxFUVMiLCJjcmVhdGVkX2F0IjoiMjAyNS0wMS0xMCAxNjoxNToxOC42NzA5MjIgKzAwOjAwOjAwIiwiZXhwIjoxNzM2NTI5MzI3LCJpYXQiOjE3MzY1MjU3Mjd9.m71DDMrQZaK3uFFfN-VSWRIwwo1X-r9m7zu29nKbU64";
 
     #[tokio::test]
     async fn test_logout_endpoint() {
@@ -38,13 +37,14 @@ mod tests {
             name: String::from("Meguu"),
             email: String::from("Meguu@example.com"),
             password: String::from("1234"),
+            image: String::from("default.png"),
             created_at: Some(String::from("1233, 445")),
         };
         let payload = create_payload(user_data).await.unwrap();
 
         let client = Client::new();
         let response = client
-            .post("http://127.0.0.1:3000/user/logout")
+            .post("http://127.0.0.1:3000/application/user/logout")
             .header("Cookie", format!("auth={}", payload))
             .send()
             .await
@@ -63,13 +63,14 @@ mod tests {
             name: String::from("Meguu"),
             email: String::from("Meguu@example.com"),
             password: String::from("1234"),
+            image: String::from("default.png"),
             created_at: Some(String::from("1233, 445")),
         };
         let payload = create_payload(user_data).await.unwrap();
 
         let client = Client::new();
         let response = client
-            .get("http://127.0.0.1:3000/user/info")
+            .get("http://127.0.0.1:3000/application/user/info")
             .header("Cookie", format!("auth={}", payload))
             .send()
             .await
@@ -85,7 +86,7 @@ mod tests {
         let form_data = [("username", "migus"), ("password", "1234")];
 
         let response = client
-            .post("http://127.0.0.1:3000/user/login")
+            .post("http://127.0.0.1:3000/application/user/login")
             .form(&form_data)
             .send()
             .await
@@ -113,7 +114,7 @@ mod tests {
         let form_data = [("username", "migus"), ("password", "123")];
 
         let response = client
-            .post("http://127.0.0.1:3000/user/login")
+            .post("http://127.0.0.1:3000/application/user/login")
             .form(&form_data)
             .send()
             .await
@@ -141,7 +142,7 @@ mod tests {
             ("email", "test@example.com"),
         ];
         let response = client
-            .post("http://127.0.0.1:3000/user/register")
+            .post("http://127.0.0.1:3000/application/user/register")
             .form(&form_data)
             .send()
             .await
@@ -175,7 +176,7 @@ mod tests {
         ];
 
         let response = client
-            .post("http://127.0.0.1:3000/user/register")
+            .post("http://127.0.0.1:3000/application/user/register")
             .form(&form_data)
             .send()
             .await

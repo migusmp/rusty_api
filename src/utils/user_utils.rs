@@ -16,11 +16,6 @@ pub async fn verify_user_exists(
     pool: &Arc<PgPool>,
 ) -> Result<bool, JoinError> {
     // Consulta SQL para verificar si el usuario existe por correo o nombre de usuario
-    println!(
-        "name: {:?}, email: {:?}, password: {:?}",
-        user.username, user.email, user.password
-    );
-
     let result: (i64,) = sqlx::query_as(
         r#"
         SELECT COUNT(*) 
@@ -34,8 +29,6 @@ pub async fn verify_user_exists(
     .await
     .unwrap();
 
-    println!("Result: {:?}", result);
-
     Ok(result.0 > 0) // Si COUNT(*) > 0, el usuario existe
 }
 
@@ -47,7 +40,7 @@ pub async fn verify_user_login(
     // Realizamos la consulta para obtener los datos del usuario por `username`.
     let row = sqlx::query!(
         r#"
-        SELECT id, username, email, password, created_at
+        SELECT id, username, email, password, image, created_at
         FROM users
         WHERE username = $1
         "#,
@@ -69,6 +62,7 @@ pub async fn verify_user_login(
             id: row.id,
             name: row.username,
             email: row.email,
+            image: row.image.unwrap(),
             password: row.password,
             created_at,
         }))
@@ -88,6 +82,7 @@ pub async fn create_payload(user_data: User) -> Result<String, jsonwebtoken::err
         user_data.id,
         user_data.name,
         user_data.email,
+        user_data.image,
         user_data.password,
         user_data.created_at,
         exp,

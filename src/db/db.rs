@@ -73,9 +73,33 @@ pub async fn insert_user(
     Ok(())
 }
 
-pub async fn delete_all_users(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn update_user_image(
+    user_id: i32,
+    image_url: &String,
+    pool: &Arc<PgPool>,
+) -> Result<(), Error> {
+    let query = r#"
+        UPDATE users
+        SET image = $1
+        WHERE id = $2
+    "#;
+
+    sqlx::query(query)
+        .bind(image_url)
+        .bind(user_id)
+        .execute(&**pool) // Ejecutamos sin transacción
+        .await?;
+
+    Ok(())
+}
+
+pub async fn delete_all_db(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Ejecutamos la consulta para borrar todos los datos de la tabla
     sqlx::query("DELETE FROM users").execute(pool).await?;
+    sqlx::query("DELETE FROM friend_requests")
+        .execute(pool)
+        .await?;
+    sqlx::query("DELETE FROM friends").execute(pool).await?;
 
     Ok(())
 }

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.7.7", features = ["macros", "ws"] } 
+axum = { version = "0.7.7", features = ["macros", "multipart", "ws"] } 
 tower-http = { version = "0.6.1", features = ["full"] }
 futures = "0.3"
 tokio = { version = "1", features = ["full"] }
@@ -20,3 +20,4 @@ reqwest = { version = "0.12", features = ["json"] }
 sqlx = { version = "0.8.3", features = ["macros", "postgres", "runtime-tokio", "time"] }
 dotenv = "0.15.0"
 rand = "0.8.5"
+uuid = { version = "1.11.1", features = ["v4"] }

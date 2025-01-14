@@ -21,6 +21,7 @@ pub struct User {
     pub id: i32,
     pub name: String,
     pub email: String,
+    pub image: String,
     pub password: String,
     pub created_at: Option<String>,
 }
@@ -30,6 +31,7 @@ pub struct Payload {
     pub id: i32,
     pub name: String,
     pub email: String,
+    pub image: String,
     pub password: String,
     pub created_at: Option<String>,
     pub exp: i64,
@@ -46,6 +48,8 @@ pub enum ErrorRequest {
     InvalidFriendRequest,
     DuplicateFriendRequest,
     NoFriendRequestFound,
+    InvalidImageSize,
+    InvalidImageFormat,
 }
 
 impl IntoResponse for ErrorRequest {
@@ -57,6 +61,10 @@ impl IntoResponse for ErrorRequest {
             ErrorRequest::PasswordInvalid => (StatusCode::BAD_REQUEST, "invalid password"),
             ErrorRequest::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
             ErrorRequest::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal error"),
+            ErrorRequest::InvalidImageSize => (
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "Image exceeds the maximum allowed size of 5MB.",
+            ),
             ErrorRequest::InvalidFriendRequest => (
                 StatusCode::BAD_REQUEST,
                 "You can't add yourself as a friend",
@@ -64,9 +72,12 @@ impl IntoResponse for ErrorRequest {
             ErrorRequest::DuplicateFriendRequest => {
                 (StatusCode::OK, "You requested frienship before")
             }
+
             ErrorRequest::NoFriendRequestFound => {
                 (StatusCode::BAD_REQUEST, "No friend request found")
             }
+
+            ErrorRequest::InvalidImageFormat => (StatusCode::BAD_REQUEST, "Invalid Image format"),
         };
         let body = Json(ErrorResponse {
             status: "error".to_string(),
@@ -98,6 +109,7 @@ impl Payload {
         name: String,
         email: String,
         password: String,
+        image: String,
         created_at: Option<String>,
         exp: i64,
         iat: i64,
@@ -111,6 +123,7 @@ impl Payload {
             id,
             name,
             email,
+            image,
             password,
             created_at,
             exp,

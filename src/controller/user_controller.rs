@@ -3,9 +3,15 @@ use std::sync::Arc;
 use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser};
 use crate::services::user::{login, register};
 use crate::utils::responses::ApiResponse;
+use axum::extract::Multipart;
+use axum::http::HeaderMap;
 use axum::Extension;
 use axum::{http::StatusCode, response::IntoResponse, Form};
 use sqlx::PgPool;
+use tokio::fs;
+use uuid::Uuid;
+
+const MAX_CONTENT_LENGTH: u64 = 10 * 1024 * 1024; // 10 MB
 
 // Ruta de registro de usuarios.
 pub async fn user_register(
@@ -69,10 +75,63 @@ pub async fn user_logout() -> Result<impl IntoResponse, StatusCode> {
 
 // Ruta de informacion de usuario (Probar decodear el payload)
 pub async fn user_info(
-    Extension(payload): Extension<Payload>,
+    Extension(_payload): Extension<Payload>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    println!("User ID: {}", payload.id);
-    println!("User name: {}", payload.name);
-
     Ok(ApiResponse::success("Usuario verificado correctamente"))
+}
+
+pub async fn upload_image(
+    headers: HeaderMap,
+    multipart: Multipart,
+) -> Result<impl IntoResponse, ErrorRequest> {
+    if let Some(content_length) = headers.get("content-length") {
+        let content_length = content_length
+            .to_str()
+            .unwrap_or("0")
+            .parse::<u64>()
+            .unwrap_or(0);
+        if content_length > MAX_CONTENT_LENGTH {
+            return Err(ErrorRequest::UsernameEmpty);
+        }
+    }
+
+    let mut file_name = String::new();
+
+    let mut fields = multipart; // Procesamos el contenido del multipart.
+
+    while let Some(field) = fields.next_field().await.map_err(|e| {
+        eprintln!("Error: {:?}", e);
+        ErrorRequest::InternalError
+    })? {
+        let _name = field.name().unwrap_or("file");
+        let content_type = field.content_type().unwrap_or("application/octet-stream");
+        println!("CONTENT-TYPE: {:?}", content_type);
+
+        // Check this file is an image.
+        if !content_type.starts_with("image/") {
+            return Err(ErrorRequest::InvalidImageFormat);
+        }
+
+        let file_extension = match content_type.split('/').last() {
+            Some(ext) => ext,
+            None => return Err(ErrorRequest::InvalidImageFormat),
+        };
+        println!("FILE EXTENSION: {:?}", file_extension);
+
+        file_name = format!("{}.{}", Uuid::new_v4(), file_extension);
+
+        // Guardar el archivo.
+        let data = field.bytes().await.map_err(|e| {
+            eprintln!("Error to save uploaded file: {:?}", e);
+            ErrorRequest::InternalError
+        })?;
+
+        let path = format!("./uploads/user/{}", file_name);
+        fs::write(&path, &data).await.map_err(|e| {
+            eprintln!("Error al guardar el archivo: {:?}", e);
+            ErrorRequest::InternalError
+        })?;
+    }
+    println!("{:?}", file_name);
+    Ok(ApiResponse::success("Image uploaded successfully"))
 }
