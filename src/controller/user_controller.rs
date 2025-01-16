@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
-use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser};
+use crate::db::db::{check_username, CheckResult};
+use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser, UpdateData};
 use crate::services::user::{login, register};
 use crate::utils::responses::ApiResponse;
 use axum::extract::Multipart;
@@ -80,6 +81,44 @@ pub async fn user_info(
     Ok(ApiResponse::success("Usuario verificado correctamente"))
 }
 
+pub async fn user_update(
+    Extension(_payload): Extension<Payload>,
+    Form(update_info): Form<UpdateData>,
+    pool: Arc<PgPool>,
+) -> Result<impl IntoResponse, ErrorRequest> {
+    match update_info.username {
+        Some(username) => match check_username(username, &pool).await {
+            CheckResult::NONEXISTS => {
+                println!("Continuar");
+            }
+            CheckResult::EXISTS => {
+                println!("No continuar")
+            }
+        },
+        None => {
+            println!("no hay username")
+        }
+    }
+
+    match update_info.passowrd {
+        Some(pwd) => {
+            println!("new pwd: {}", pwd);
+        }
+        None => {
+            println!("No pwd in request");
+        }
+    }
+
+    match update_info.email {
+        Some(email) => {
+            println!("new email: {}", email);
+        }
+        None => println!("No email in request"),
+    }
+
+    Ok(ApiResponse::success("update endpoint is working"))
+}
+
 pub async fn upload_image(
     headers: HeaderMap,
     multipart: Multipart,
@@ -105,7 +144,6 @@ pub async fn upload_image(
     })? {
         let _name = field.name().unwrap_or("file");
         let content_type = field.content_type().unwrap_or("application/octet-stream");
-        println!("CONTENT-TYPE: {:?}", content_type);
 
         // Check this file is an image.
         if !content_type.starts_with("image/") {
@@ -116,7 +154,6 @@ pub async fn upload_image(
             Some(ext) => ext,
             None => return Err(ErrorRequest::InvalidImageFormat),
         };
-        println!("FILE EXTENSION: {:?}", file_extension);
 
         file_name = format!("{}.{}", Uuid::new_v4(), file_extension);
 

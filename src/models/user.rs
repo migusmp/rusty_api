@@ -38,6 +38,13 @@ pub struct Payload {
     pub iat: i64,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UpdateData {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub passowrd: Option<String>,
+}
+
 pub enum ErrorRequest {
     UsernameInvalid,
     UsernameEmpty,

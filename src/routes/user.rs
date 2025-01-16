@@ -1,12 +1,12 @@
-use std::sync::Arc;
-
 use crate::controller::user_controller::*;
 use crate::middlewares::auth::auth;
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::Router;
 use sqlx::PgPool;
+use std::sync::Arc;
 
 pub fn user_router(pool: Arc<PgPool>) -> Router {
+    let pool_login = pool.clone();
     Router::new()
         .route(
             "/register",
@@ -15,7 +15,7 @@ pub fn user_router(pool: Arc<PgPool>) -> Router {
                 move |data| user_register(data, pool)
             }),
         )
-        .route("/login", post(move |data| user_login(data, pool.clone())))
+        .route("/login", post(move |data| user_login(data, pool_login)))
         .route(
             "/logout",
             post(user_logout).route_layer(axum::middleware::from_fn(auth)),
@@ -23,6 +23,14 @@ pub fn user_router(pool: Arc<PgPool>) -> Router {
         .route(
             "/info",
             get(user_info).route_layer(axum::middleware::from_fn(auth)),
+        )
+        .route(
+            "/update",
+            put({
+                let pool = pool.clone();
+                move |payload, path| user_update(payload, path, pool)
+            })
+            .route_layer(axum::middleware::from_fn(auth)),
         )
         .route("/upload", post(upload_image))
 }

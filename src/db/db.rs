@@ -93,6 +93,44 @@ pub async fn update_user_image(
     Ok(())
 }
 
+pub enum CheckResult {
+    EXISTS,
+    NONEXISTS,
+}
+
+pub async fn check_username(username: String, pool: &Arc<PgPool>) -> CheckResult {
+    let query = r#"
+        SELECT username 
+        FROM users 
+        WHERE username = $1;
+    "#;
+
+    match sqlx::query(query).bind(username).execute(&**pool).await {
+        Ok(_) => CheckResult::EXISTS,
+        Err(_) => CheckResult::NONEXISTS,
+    }
+}
+
+pub async fn update_user_name(
+    new_username: String,
+    id: i32,
+    pool: &Arc<PgPool>,
+) -> Result<(), Error> {
+    let query = r#"
+        UPDATE users
+        SET username = $1
+        WHERE id = $2
+    "#;
+
+    sqlx::query(query)
+        .bind(new_username)
+        .bind(id)
+        .execute(&**pool)
+        .await?;
+
+    Ok(())
+}
+
 pub async fn delete_all_db(pool: &PgPool) -> Result<(), sqlx::Error> {
     // Ejecutamos la consulta para borrar todos los datos de la tabla
     sqlx::query("DELETE FROM users").execute(pool).await?;
