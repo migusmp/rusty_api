@@ -21,3 +21,5 @@ sqlx = { version = "0.8.3", features = ["macros", "postgres", "runtime-tokio", "
 dotenv = "0.15.0"
 rand = "0.8.5"
 uuid = { version = "1.11.1", features = ["v4"] }
+serde_urlencoded = "0.7.1"
+hyper = { version = "1.5.2", features = ["full"] }

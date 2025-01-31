@@ -39,7 +39,6 @@ impl<'a> ApiResponse<'a> {
             "status": "success",
             "message": message,
         });
-
         ApiResponse::Success(StatusCode::OK, Json(success_msg))
     }
 
@@ -51,7 +50,6 @@ impl<'a> ApiResponse<'a> {
         if let Some(data) = data {
             success_msg["data"] = json!(data);
         }
-
         ApiResponse::SuccessWithData(StatusCode::OK, Json(success_msg))
     }
 
@@ -60,7 +58,6 @@ impl<'a> ApiResponse<'a> {
             "status": "success",
             "message": msg,
         });
-
         ApiResponse::SuccessWithCookie(StatusCode::OK, Json(success_msg), cookie)
     }
 

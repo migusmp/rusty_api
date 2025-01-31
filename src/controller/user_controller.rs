@@ -94,6 +94,9 @@ pub async fn user_update(
             CheckResult::EXISTS => {
                 println!("No continuar")
             }
+            CheckResult::CONSULTERROR => {
+                return Err(ErrorRequest::InternalError);
+            }
         },
         None => {
             println!("no hay username")

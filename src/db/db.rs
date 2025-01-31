@@ -96,6 +96,7 @@ pub async fn update_user_image(
 pub enum CheckResult {
     EXISTS,
     NONEXISTS,
+    CONSULTERROR,
 }
 
 pub async fn check_username(username: String, pool: &Arc<PgPool>) -> CheckResult {
@@ -105,9 +106,14 @@ pub async fn check_username(username: String, pool: &Arc<PgPool>) -> CheckResult
         WHERE username = $1;
     "#;
 
-    match sqlx::query(query).bind(username).execute(&**pool).await {
-        Ok(_) => CheckResult::EXISTS,
-        Err(_) => CheckResult::NONEXISTS,
+    match sqlx::query(query).bind(&username).execute(&**pool).await {
+        Ok(info) => {
+            if info.rows_affected() > 0 {
+                return CheckResult::EXISTS;
+            }
+            return CheckResult::NONEXISTS;
+        }
+        Err(_) => CheckResult::CONSULTERROR,
     }
 }
 

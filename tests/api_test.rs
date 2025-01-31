@@ -1,6 +1,8 @@
 use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
 
+mod common;
+
 #[derive(Deserialize, Debug, PartialEq)]
 struct ErrorResponse {
     status: String,
@@ -49,8 +51,6 @@ mod tests {
             .send()
             .await
             .unwrap();
-
-        println!("Response: {:?}", response);
 
         // Verifica el estado de la respuesta
         assert_eq!(response.status(), 200);
