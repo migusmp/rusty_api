@@ -1,5 +1,5 @@
 use crate::controller::user_controller::*;
-use crate::middlewares::auth::{auth, auth_update};
+use crate::middlewares::auth::auth;
 use axum::routing::{get, post, put};
 use axum::Router;
 use sqlx::PgPool;
@@ -30,7 +30,7 @@ pub fn user_router(pool: Arc<PgPool>) -> Router {
                 let pool = pool.clone();
                 move |payload, path| user_update(payload, path, pool)
             })
-            .route_layer(axum::middleware::from_fn(auth_update)),
+            .route_layer(axum::middleware::from_fn(auth)),
         )
         .route("/upload", post(upload_image))
 }

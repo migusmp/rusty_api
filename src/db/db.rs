@@ -83,7 +83,6 @@ pub async fn update_user_image(
         SET image = $1
         WHERE id = $2
     "#;
-
     sqlx::query(query)
         .bind(image_url)
         .bind(user_id)
@@ -93,47 +92,52 @@ pub async fn update_user_image(
     Ok(())
 }
 
-pub enum CheckResult {
-    EXISTS,
-    NONEXISTS,
-    CONSULTERROR,
+pub enum UpdateUserName {
+    UserExists,
+    UserNameUpdated,
+    ConsultError,
 }
 
-pub async fn check_username(username: String, pool: &Arc<PgPool>) -> CheckResult {
+pub enum UpdatePassword {
+    PasswordUpdated,
+}
+
+pub async fn update_user_name(username: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserName {
     let query = r#"
         SELECT username 
         FROM users 
         WHERE username = $1;
     "#;
-
     match sqlx::query(query).bind(&username).execute(&**pool).await {
         Ok(info) => {
             if info.rows_affected() > 0 {
-                return CheckResult::EXISTS;
+                return UpdateUserName::UserExists;
             }
-            return CheckResult::NONEXISTS;
+            match update_username(username, id, pool).await {
+                Ok(_) => return UpdateUserName::UserNameUpdated,
+                Err(_) => return UpdateUserName::ConsultError,
+            }
         }
-        Err(_) => CheckResult::CONSULTERROR,
+        Err(_) => UpdateUserName::ConsultError,
     }
 }
 
-pub async fn update_user_name(
-    new_username: String,
-    id: i32,
-    pool: &Arc<PgPool>,
-) -> Result<(), Error> {
+// TODO
+pub async fn update_user_pwd(_new_pwd: String, _id: i32, _pool: &Arc<PgPool>) -> UpdatePassword {
+    return UpdatePassword::PasswordUpdated;
+}
+
+async fn update_username(new_username: String, id: i32, pool: &Arc<PgPool>) -> Result<(), Error> {
     let query = r#"
         UPDATE users
         SET username = $1
         WHERE id = $2
     "#;
-
     sqlx::query(query)
         .bind(new_username)
         .bind(id)
         .execute(&**pool)
         .await?;
-
     Ok(())
 }
 
@@ -144,6 +148,5 @@ pub async fn delete_all_db(pool: &PgPool) -> Result<(), sqlx::Error> {
         .execute(pool)
         .await?;
     sqlx::query("DELETE FROM friends").execute(pool).await?;
-
     Ok(())
 }

@@ -42,7 +42,7 @@ pub struct Payload {
 pub struct UpdateData {
     pub username: Option<String>,
     pub email: Option<String>,
-    pub passowrd: Option<String>,
+    pub password: Option<String>,
 }
 
 pub enum ErrorRequest {

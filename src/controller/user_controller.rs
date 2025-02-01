@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::db::db::{check_username, CheckResult};
+use crate::db::db::{update_user_name, update_user_pwd, UpdatePassword, UpdateUserName};
 use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser, UpdateData};
 use crate::services::user::{login, register};
 use crate::utils::responses::ApiResponse;
@@ -82,33 +82,26 @@ pub async fn user_info(
 }
 
 pub async fn user_update(
-    Extension(_payload): Extension<Payload>,
+    Extension(payload): Extension<Payload>,
     Form(update_info): Form<UpdateData>,
     pool: Arc<PgPool>,
 ) -> Result<impl IntoResponse, ErrorRequest> {
-    match update_info.username {
-        Some(username) => match check_username(username, &pool).await {
-            CheckResult::NONEXISTS => {
-                println!("Continuar");
+    if let Some(username) = update_info.username {
+        match update_user_name(username, payload.id, &pool).await {
+            UpdateUserName::UserNameUpdated => {}
+            UpdateUserName::UserExists => {
+                return Err(ErrorRequest::UserAlreadyExists);
             }
-            CheckResult::EXISTS => {
-                println!("No continuar")
-            }
-            CheckResult::CONSULTERROR => {
+            UpdateUserName::ConsultError => {
                 return Err(ErrorRequest::InternalError);
             }
-        },
-        None => {
-            println!("no hay username")
         }
     }
 
-    match update_info.passowrd {
-        Some(pwd) => {
-            println!("new pwd: {}", pwd);
-        }
-        None => {
-            println!("No pwd in request");
+    // TODO
+    if let Some(pwd) = update_info.password {
+        match update_user_pwd(pwd, payload.id, &pool).await {
+            UpdatePassword::PasswordUpdated => println!("Password updated"),
         }
     }
 
