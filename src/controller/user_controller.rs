@@ -1,6 +1,9 @@
 use std::sync::Arc;
 
-use crate::db::db::{update_user_name, update_user_pwd, UpdatePassword, UpdateUserName};
+use crate::db::db::{
+    update_user_email, update_user_name, update_user_pwd, UpdateUserEmail, UpdateUserName,
+    UpdateUserPassword,
+};
 use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser, UpdateData};
 use crate::services::user::{login, register};
 use crate::utils::responses::ApiResponse;
@@ -98,22 +101,24 @@ pub async fn user_update(
         }
     }
 
-    // TODO
     if let Some(pwd) = update_info.password {
         match update_user_pwd(pwd, payload.id, &pool).await {
-            UpdatePassword::PasswordUpdated => println!("Password updated"),
-            UpdatePassword::ErrorPasswordUpdate => return Err(ErrorRequest::ErrorPasswordUpdate),
+            UpdateUserPassword::PasswordUpdated => println!("Password updated"),
+            UpdateUserPassword::ErrorPasswordUpdate => {
+                return Err(ErrorRequest::ErrorPasswordUpdate)
+            }
         }
     }
 
-    match update_info.email {
-        Some(email) => {
-            println!("new email: {}", email);
+    if let Some(email) = update_info.email {
+        match update_user_email(email, payload.id, &pool).await {
+            UpdateUserEmail::EmailUpdated => {}
+            UpdateUserEmail::ErrorEmailUpdate => return Err(ErrorRequest::ErrorEmailUpdate),
+            UpdateUserEmail::EmailAlreadyExist => return Err(ErrorRequest::EmailExists),
         }
-        None => println!("No email in request"),
     }
 
-    Ok(ApiResponse::success("update endpoint is working"))
+    Ok(ApiResponse::success("Info updated"))
 }
 
 pub async fn upload_image(

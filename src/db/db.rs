@@ -98,9 +98,15 @@ pub enum UpdateUserName {
     ConsultError,
 }
 
-pub enum UpdatePassword {
+pub enum UpdateUserPassword {
     PasswordUpdated,
     ErrorPasswordUpdate,
+}
+
+pub enum UpdateUserEmail {
+    EmailUpdated,
+    ErrorEmailUpdate,
+    EmailAlreadyExist,
 }
 
 pub async fn update_user_name(username: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserName {
@@ -123,31 +129,6 @@ pub async fn update_user_name(username: String, id: i32, pool: &Arc<PgPool>) -> 
     }
 }
 
-// TODO
-pub async fn update_user_pwd(new_pwd: String, id: i32, pool: &Arc<PgPool>) -> UpdatePassword {
-    let pwd = match bcrypt::hash(&new_pwd, 4) {
-        Ok(pwd) => pwd,
-        Err(_) => {
-            return UpdatePassword::ErrorPasswordUpdate;
-        }
-    };
-    let query = r#"
-        UPDATE users
-        SET password = $1
-        WHERE id = $2
-    "#;
-
-    match sqlx::query(query).bind(pwd).bind(id).execute(&**pool).await {
-        Ok(_) => {
-            return UpdatePassword::PasswordUpdated;
-        }
-        Err(_e) => {
-            eprintln!("Error al actualizar contraseña");
-            return UpdatePassword::ErrorPasswordUpdate;
-        }
-    }
-}
-
 async fn update_username(new_username: String, id: i32, pool: &Arc<PgPool>) -> Result<(), Error> {
     let query = r#"
         UPDATE users
@@ -156,6 +137,66 @@ async fn update_username(new_username: String, id: i32, pool: &Arc<PgPool>) -> R
     "#;
     sqlx::query(query)
         .bind(new_username)
+        .bind(id)
+        .execute(&**pool)
+        .await?;
+    Ok(())
+}
+
+// TODO
+pub async fn update_user_pwd(new_pwd: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserPassword {
+    let pwd = match bcrypt::hash(&new_pwd, 4) {
+        Ok(pwd) => pwd,
+        Err(_) => {
+            return UpdateUserPassword::ErrorPasswordUpdate;
+        }
+    };
+    let query = r#"
+        UPDATE users
+        SET password = $1
+        WHERE id = $2
+    "#;
+    match sqlx::query(query).bind(pwd).bind(id).execute(&**pool).await {
+        Ok(_) => {
+            return UpdateUserPassword::PasswordUpdated;
+        }
+        Err(_e) => {
+            eprintln!("Error al actualizar contraseña");
+            return UpdateUserPassword::ErrorPasswordUpdate;
+        }
+    }
+}
+
+pub async fn update_user_email(new_email: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserEmail {
+    let query = r#"
+        SELECT email 
+        FROM users 
+        WHERE email = $1;
+    "#;
+    match sqlx::query(query).bind(&new_email).execute(&**pool).await {
+        Ok(info) => {
+            if info.rows_affected() > 0 {
+                return UpdateUserEmail::EmailAlreadyExist;
+            }
+            return match update_email(new_email, id, pool).await {
+                Ok(_) => UpdateUserEmail::EmailUpdated,
+                Err(_) => UpdateUserEmail::ErrorEmailUpdate,
+            };
+        }
+        Err(_) => {
+            return UpdateUserEmail::ErrorEmailUpdate;
+        }
+    }
+}
+
+async fn update_email(new_email: String, id: i32, pool: &Arc<PgPool>) -> Result<(), Error> {
+    let query = r#"
+        UPDATE users
+        SET email = $1
+        WHERE id = $2
+    "#;
+    sqlx::query(query)
+        .bind(new_email)
         .bind(id)
         .execute(&**pool)
         .await?;

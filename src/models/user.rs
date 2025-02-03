@@ -58,6 +58,8 @@ pub enum ErrorRequest {
     InvalidImageSize,
     InvalidImageFormat,
     ErrorPasswordUpdate,
+    ErrorEmailUpdate,
+    EmailExists,
 }
 
 impl IntoResponse for ErrorRequest {
@@ -90,6 +92,11 @@ impl IntoResponse for ErrorRequest {
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "Error to update password",
             ),
+            ErrorRequest::ErrorEmailUpdate => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error al actualizar el email",
+            ),
+            ErrorRequest::EmailExists => (StatusCode::BAD_REQUEST, "Email does exists"),
         };
         let body = Json(ErrorResponse {
             status: "error".to_string(),
