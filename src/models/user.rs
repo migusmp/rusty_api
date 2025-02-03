@@ -48,7 +48,7 @@ pub struct UpdateData {
 pub enum ErrorRequest {
     UsernameInvalid,
     UsernameEmpty,
-    EmailInvalid,
+    InvalidEmail,
     PasswordInvalid,
     UserAlreadyExists,
     InternalError,
@@ -67,7 +67,7 @@ impl IntoResponse for ErrorRequest {
         let (status, err_msg) = match self {
             ErrorRequest::UsernameInvalid => (StatusCode::BAD_REQUEST, "Invalid username"),
             ErrorRequest::UsernameEmpty => (StatusCode::BAD_REQUEST, "You must enter a username"),
-            ErrorRequest::EmailInvalid => (StatusCode::BAD_REQUEST, "Invalid email"),
+            ErrorRequest::InvalidEmail => (StatusCode::BAD_REQUEST, "Invalid email"),
             ErrorRequest::PasswordInvalid => (StatusCode::BAD_REQUEST, "invalid password"),
             ErrorRequest::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
             ErrorRequest::InternalError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal error"),

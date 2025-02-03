@@ -169,10 +169,15 @@ pub async fn update_user_pwd(new_pwd: String, id: i32, pool: &Arc<PgPool>) -> Up
 }
 
 pub async fn update_user_email(new_email: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserEmail {
-    // match check_updated_email(&new_email).await {
-    //     Ok(_) => {}
-    //     Err(_e) => return Err(UpdateUserEmail::InvalidEmail),
-    // }
+    match check_updated_email(&new_email).await {
+        Ok(_) => {}
+        Err(e) => match e {
+            UpdateUserEmail::InvalidEmail => {
+                return e;
+            }
+            _ => {}
+        },
+    }
 
     let query = r#"
         SELECT email 
@@ -210,7 +215,7 @@ async fn update_email(new_email: String, id: i32, pool: &Arc<PgPool>) -> Result<
 }
 
 async fn check_updated_email(new_email: &String) -> Result<(), UpdateUserEmail> {
-    if !new_email.contains("@") && !new_email.contains(".com") {
+    if !new_email.contains("@") || !new_email.ends_with(".com") {
         Err(UpdateUserEmail::InvalidEmail)
     } else {
         Ok(())

@@ -36,7 +36,7 @@ pub async fn user_register(
     }
 
     if !email.contains("@") {
-        return Err(ErrorRequest::EmailInvalid);
+        return Err(ErrorRequest::InvalidEmail);
     }
 
     if password.len() < 4 {
@@ -116,6 +116,7 @@ pub async fn user_update(
             UpdateUserEmail::EmailUpdated => {}
             UpdateUserEmail::ErrorEmailUpdate => return Err(ErrorRequest::ErrorEmailUpdate),
             UpdateUserEmail::EmailAlreadyExist => return Err(ErrorRequest::EmailExists),
+            UpdateUserEmail::InvalidEmail => return Err(ErrorRequest::InvalidEmail),
         }
     }
 
