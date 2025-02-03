@@ -57,6 +57,7 @@ pub enum ErrorRequest {
     NoFriendRequestFound,
     InvalidImageSize,
     InvalidImageFormat,
+    ErrorPasswordUpdate,
 }
 
 impl IntoResponse for ErrorRequest {
@@ -85,6 +86,10 @@ impl IntoResponse for ErrorRequest {
             }
 
             ErrorRequest::InvalidImageFormat => (StatusCode::BAD_REQUEST, "Invalid Image format"),
+            ErrorRequest::ErrorPasswordUpdate => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error to update password",
+            ),
         };
         let body = Json(ErrorResponse {
             status: "error".to_string(),

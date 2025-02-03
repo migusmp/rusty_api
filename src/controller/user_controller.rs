@@ -102,6 +102,7 @@ pub async fn user_update(
     if let Some(pwd) = update_info.password {
         match update_user_pwd(pwd, payload.id, &pool).await {
             UpdatePassword::PasswordUpdated => println!("Password updated"),
+            UpdatePassword::ErrorPasswordUpdate => return Err(ErrorRequest::ErrorPasswordUpdate),
         }
     }
 

@@ -100,6 +100,7 @@ pub enum UpdateUserName {
 
 pub enum UpdatePassword {
     PasswordUpdated,
+    ErrorPasswordUpdate,
 }
 
 pub async fn update_user_name(username: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserName {
@@ -123,8 +124,28 @@ pub async fn update_user_name(username: String, id: i32, pool: &Arc<PgPool>) -> 
 }
 
 // TODO
-pub async fn update_user_pwd(_new_pwd: String, _id: i32, _pool: &Arc<PgPool>) -> UpdatePassword {
-    return UpdatePassword::PasswordUpdated;
+pub async fn update_user_pwd(new_pwd: String, id: i32, pool: &Arc<PgPool>) -> UpdatePassword {
+    let pwd = match bcrypt::hash(&new_pwd, 4) {
+        Ok(pwd) => pwd,
+        Err(_) => {
+            return UpdatePassword::ErrorPasswordUpdate;
+        }
+    };
+    let query = r#"
+        UPDATE users
+        SET password = $1
+        WHERE id = $2
+    "#;
+
+    match sqlx::query(query).bind(pwd).bind(id).execute(&**pool).await {
+        Ok(_) => {
+            return UpdatePassword::PasswordUpdated;
+        }
+        Err(_e) => {
+            eprintln!("Error al actualizar contraseña");
+            return UpdatePassword::ErrorPasswordUpdate;
+        }
+    }
 }
 
 async fn update_username(new_username: String, id: i32, pool: &Arc<PgPool>) -> Result<(), Error> {
