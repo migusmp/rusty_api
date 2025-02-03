@@ -96,6 +96,7 @@ pub async fn user_update(
                 return Err(ErrorRequest::UserAlreadyExists);
             }
             UpdateUserName::ConsultError => {
+                println!("Error en la consulta");
                 return Err(ErrorRequest::InternalError);
             }
         }
@@ -118,7 +119,7 @@ pub async fn user_update(
         }
     }
 
-    Ok(ApiResponse::success("Info updated"))
+    Ok(ApiResponse::success("Data updated"))
 }
 
 pub async fn upload_image(

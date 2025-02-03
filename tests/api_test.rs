@@ -33,6 +33,62 @@ mod tests {
     use sqlx::query;
 
     #[tokio::test]
+    async fn test_update_email() {
+        let rand_str = generate_random_string(8);
+        let new_email = format!("testupdateemail{}@example.com", rand_str);
+
+        let user_data = User {
+            id: 11,
+            name: String::from("megu"),
+            email: String::from("megu@example.com"),
+            password: String::from("1234"),
+            image: String::from("default.png"),
+            created_at: Some(String::from("1233, 445")),
+        };
+        let payload = create_payload(user_data).await.unwrap();
+
+        let form_data = [("email", new_email)];
+
+        let client = Client::new();
+        let response = client
+            .put("http://127.0.0.1:3000/application/user/update")
+            .form(&form_data)
+            .header("Cookie", format!("auth={}", payload))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200)
+    }
+
+    #[tokio::test]
+    async fn test_update_username() {
+        let rand_str = generate_random_string(8);
+        let username = format!("testupdate{}", rand_str);
+
+        let user_data = User {
+            id: 11,
+            name: String::from("megu"),
+            email: String::from("megu@example.com"),
+            password: String::from("1234"),
+            image: String::from("default.png"),
+            created_at: Some(String::from("1233, 445")),
+        };
+        let payload = create_payload(user_data).await.unwrap();
+
+        let form_data = [("username", username)];
+
+        let client = Client::new();
+        let response = client
+            .put("http://127.0.0.1:3000/application/user/update")
+            .form(&form_data)
+            .header("Cookie", format!("auth={}", payload))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 200)
+    }
+
+    #[tokio::test]
     async fn test_logout_endpoint() {
         let user_data = User {
             id: 123432,

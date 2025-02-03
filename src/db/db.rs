@@ -107,6 +107,7 @@ pub enum UpdateUserEmail {
     EmailUpdated,
     ErrorEmailUpdate,
     EmailAlreadyExist,
+    InvalidEmail,
 }
 
 pub async fn update_user_name(username: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserName {
@@ -168,6 +169,11 @@ pub async fn update_user_pwd(new_pwd: String, id: i32, pool: &Arc<PgPool>) -> Up
 }
 
 pub async fn update_user_email(new_email: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserEmail {
+    // match check_updated_email(&new_email).await {
+    //     Ok(_) => {}
+    //     Err(_e) => return Err(UpdateUserEmail::InvalidEmail),
+    // }
+
     let query = r#"
         SELECT email 
         FROM users 
@@ -201,6 +207,14 @@ async fn update_email(new_email: String, id: i32, pool: &Arc<PgPool>) -> Result<
         .execute(&**pool)
         .await?;
     Ok(())
+}
+
+async fn check_updated_email(new_email: &String) -> Result<(), UpdateUserEmail> {
+    if !new_email.contains("@") && !new_email.contains(".com") {
+        Err(UpdateUserEmail::InvalidEmail)
+    } else {
+        Ok(())
+    }
 }
 
 pub async fn delete_all_db(pool: &PgPool) -> Result<(), sqlx::Error> {
