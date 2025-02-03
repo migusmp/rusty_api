@@ -1,3 +1,4 @@
+use axum_server::{models::user::User, utils::user_utils::create_payload};
 use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
 
@@ -23,31 +24,64 @@ fn generate_random_string(len: usize) -> String {
         .collect()
 }
 
+async fn obtain_user_payload() -> String {
+    let user_data = User {
+        id: 11,
+        name: String::from("megu"),
+        email: String::from("megu@example.com"),
+        password: String::from("1234"),
+        image: String::from("default.png"),
+        created_at: Some(String::from("1233, 445")),
+    };
+    let payload = create_payload(user_data).await.unwrap();
+    payload
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum_server::{
-        db::db::init_db_pool, models::user::User, utils::user_utils::create_payload,
-    };
+    use axum_server::db::db::init_db_pool;
     use reqwest::Client;
     use sqlx::query;
+
+    #[tokio::test]
+    async fn test_invalid_update_email() {
+        let rand_str = generate_random_string(8);
+        let new_email_1 = format!("testupdateemail{}example.com", rand_str); // test update email
+                                                                             // without @.
+        let new_email_2 = format!("testupdateemail{}@example", rand_str);
+        let form_data_1 = [("email", new_email_1)];
+        let form_data_2 = [("email", new_email_2)];
+        let payload = obtain_user_payload().await;
+
+        let client = Client::new();
+        let response_1 = client
+            .put("http://127.0.0.1:3000/application/user/update")
+            .form(&form_data_1)
+            .header("Cookie", format!("auth={}", payload))
+            .send()
+            .await
+            .unwrap();
+
+        let response_2 = client
+            .put("http://127.0.0.1:3000/application/user/update")
+            .form(&form_data_2)
+            .header("Cookie", format!("auth={}", payload))
+            .send()
+            .await
+            .unwrap();
+
+        assert_eq!(response_1.status(), 400);
+        assert_eq!(response_2.status(), 400)
+    }
 
     #[tokio::test]
     async fn test_update_email() {
         let rand_str = generate_random_string(8);
         let new_email = format!("testupdateemail{}@example.com", rand_str);
 
-        let user_data = User {
-            id: 11,
-            name: String::from("megu"),
-            email: String::from("megu@example.com"),
-            password: String::from("1234"),
-            image: String::from("default.png"),
-            created_at: Some(String::from("1233, 445")),
-        };
-        let payload = create_payload(user_data).await.unwrap();
-
         let form_data = [("email", new_email)];
+        let payload = obtain_user_payload().await;
 
         let client = Client::new();
         let response = client
@@ -65,16 +99,7 @@ mod tests {
         let rand_str = generate_random_string(8);
         let username = format!("testupdate{}", rand_str);
 
-        let user_data = User {
-            id: 11,
-            name: String::from("megu"),
-            email: String::from("megu@example.com"),
-            password: String::from("1234"),
-            image: String::from("default.png"),
-            created_at: Some(String::from("1233, 445")),
-        };
-        let payload = create_payload(user_data).await.unwrap();
-
+        let payload = obtain_user_payload().await;
         let form_data = [("username", username)];
 
         let client = Client::new();
@@ -90,16 +115,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_logout_endpoint() {
-        let user_data = User {
-            id: 123432,
-            name: String::from("Meguu"),
-            email: String::from("Meguu@example.com"),
-            password: String::from("1234"),
-            image: String::from("default.png"),
-            created_at: Some(String::from("1233, 445")),
-        };
-        let payload = create_payload(user_data).await.unwrap();
-
+        let payload = obtain_user_payload().await;
         let client = Client::new();
         let response = client
             .post("http://127.0.0.1:3000/application/user/logout")
@@ -114,16 +130,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_protected_endpoint_with_jwt_cookie() {
-        let user_data = User {
-            id: 123432,
-            name: String::from("Meguu"),
-            email: String::from("Meguu@example.com"),
-            password: String::from("1234"),
-            image: String::from("default.png"),
-            created_at: Some(String::from("1233, 445")),
-        };
-        let payload = create_payload(user_data).await.unwrap();
-
+        let payload = obtain_user_payload().await;
         let client = Client::new();
         let response = client
             .get("http://127.0.0.1:3000/application/user/info")

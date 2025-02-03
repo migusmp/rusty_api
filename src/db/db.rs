@@ -162,7 +162,6 @@ pub async fn update_user_pwd(new_pwd: String, id: i32, pool: &Arc<PgPool>) -> Up
             return UpdateUserPassword::PasswordUpdated;
         }
         Err(_e) => {
-            eprintln!("Error al actualizar contraseña");
             return UpdateUserPassword::ErrorPasswordUpdate;
         }
     }
