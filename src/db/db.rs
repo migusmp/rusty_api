@@ -1,4 +1,5 @@
 use dotenv::dotenv;
+use serde::Serialize;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::Error;
 use sqlx::PgPool;
@@ -219,6 +220,32 @@ async fn check_updated_email(new_email: &String) -> Result<(), UpdateUserEmail> 
     } else {
         Ok(())
     }
+}
+
+#[derive(Debug, sqlx::FromRow, Serialize)]
+pub struct Friend {
+    id: i32,
+    username: String,
+    image: String,
+}
+
+pub async fn get_user_friends(
+    user_id: i32,
+    pool: &Arc<PgPool>,
+) -> Result<Vec<Friend>, sqlx::Error> {
+    let query = r#"
+        SELECT u.id, u.username, u.image 
+        FROM friends f
+        JOIN users u ON f.friend_id = u.id
+        WHERE f.user_id = $1
+    "#;
+
+    let friends = sqlx::query_as::<_, Friend>(query)
+        .bind(user_id)
+        .fetch_all(pool.as_ref())
+        .await?;
+
+    Ok(friends)
 }
 
 pub async fn delete_all_db(pool: &PgPool) -> Result<(), sqlx::Error> {

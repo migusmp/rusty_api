@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::db::db::{
-    update_user_email, update_user_name, update_user_pwd, UpdateUserEmail, UpdateUserName,
-    UpdateUserPassword,
+    get_user_friends, update_user_email, update_user_name, update_user_pwd, UpdateUserEmail,
+    UpdateUserName, UpdateUserPassword,
 };
 use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser, UpdateData};
 use crate::services::user::{login, register};
@@ -121,6 +121,17 @@ pub async fn user_update(
     }
 
     Ok(ApiResponse::success("Data updated"))
+}
+
+pub async fn get_friends(
+    Extension(payload): Extension<Payload>,
+    pool: Arc<PgPool>,
+) -> Result<impl IntoResponse, ErrorRequest> {
+    let friends = match get_user_friends(payload.id, &pool).await {
+        Ok(f) => f,
+        Err(_e) => return Err(ErrorRequest::InternalError),
+    };
+    Ok(ApiResponse::success_with_data("friends:", Some(friends)))
 }
 
 pub async fn upload_image(

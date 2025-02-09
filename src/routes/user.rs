@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 pub fn user_router(pool: Arc<PgPool>) -> Router {
     let pool_login = pool.clone();
+    let pool_get_friends = pool.clone();
     Router::new()
         .route(
             "/register",
@@ -23,6 +24,11 @@ pub fn user_router(pool: Arc<PgPool>) -> Router {
         .route(
             "/info",
             get(user_info).route_layer(axum::middleware::from_fn(auth)),
+        )
+        .route(
+            "/get-friends",
+            get(move |payload| get_friends(payload, pool_get_friends))
+                .route_layer(axum::middleware::from_fn(auth)),
         )
         .route(
             "/update",
