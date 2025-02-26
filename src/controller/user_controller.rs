@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use crate::db::db::{
-    get_user_friends, update_user_email, update_user_name, update_user_pwd, UpdateUserEmail,
-    UpdateUserName, UpdateUserPassword,
+    get_user_friends, get_user_profile_data, update_name_from_user, update_user_email,
+    update_user_name, update_user_pwd, UpdateUserEmail, UpdateUserName, UpdateUserPassword,
 };
 use crate::models::user::{ErrorRequest, LoginUser, Payload, RegisterUser, UpdateData};
 use crate::services::user::{login, register};
@@ -24,11 +24,16 @@ pub async fn user_register(
 ) -> Result<impl IntoResponse, ErrorRequest> {
     // Accedemos a los datos del usuario
     let username = &data.username;
+    let name = &data.name;
     let email = &data.email;
     let password = &data.password;
 
     if username.trim().is_empty() {
         return Err(ErrorRequest::UsernameEmpty);
+    }
+
+    if name.trim().is_empty() {
+        return Err(ErrorRequest::NameEmpty);
     }
 
     if username.len() < 3 {
@@ -46,6 +51,7 @@ pub async fn user_register(
     // Llamamos al servicio de registro
     let new_user = RegisterUser::new(
         username.to_string(),
+        name.to_string(),
         email.to_string(),
         password.to_string(),
     );
@@ -120,6 +126,19 @@ pub async fn user_update(
         }
     }
 
+    if let Some(name) = update_info.name {
+        match update_name_from_user(name, payload.id, &pool).await {
+            UpdateUserName::UserNameUpdated => {}
+            UpdateUserName::UserExists => {
+                return Err(ErrorRequest::UserAlreadyExists);
+            }
+            UpdateUserName::ConsultError => {
+                println!("Error en la consulta");
+                return Err(ErrorRequest::InternalError);
+            }
+        }
+    }
+
     Ok(ApiResponse::success("Data updated"))
 }
 
@@ -132,6 +151,17 @@ pub async fn get_friends(
         Err(_e) => return Err(ErrorRequest::InternalError),
     };
     Ok(ApiResponse::success_with_data("friends:", Some(friends)))
+}
+
+pub async fn get_profile_data(
+    Extension(payload): Extension<Payload>,
+    pool: Arc<PgPool>,
+) -> Result<impl IntoResponse, ErrorRequest> {
+    let user_info = match get_user_profile_data(payload.id, &pool).await {
+        Ok(info) => info,
+        Err(_e) => return Err(ErrorRequest::InternalError),
+    };
+    Ok(ApiResponse::success_with_data("profile", Some(user_info)))
 }
 
 pub async fn upload_image(

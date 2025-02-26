@@ -35,7 +35,7 @@ pub async fn register(
     let hashed_pwd = hashed_pwd_result.map_err(|_| ErrorRequest::InternalError)?;
 
     // insertamos el usuario
-    insert_user(&user.username, &user.email, &pool, &hashed_pwd)
+    insert_user(&user.username, &user.name, &user.email, &pool, &hashed_pwd)
         .await
         .map_err(|err| {
             eprintln!("Error al insertar: {}", err);

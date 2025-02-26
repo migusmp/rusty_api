@@ -40,7 +40,7 @@ pub async fn verify_user_login(
     // Realizamos la consulta para obtener los datos del usuario por `username`.
     let row = sqlx::query!(
         r#"
-        SELECT id, username, email, password, image, created_at
+        SELECT id, username, email, password, image, created_at, name
         FROM users
         WHERE username = $1
         "#,
@@ -60,7 +60,8 @@ pub async fn verify_user_login(
 
         Ok(Some(User {
             id: row.id,
-            name: row.username,
+            username: row.username,
+            name: row.name.expect("Error al obtener el name"),
             email: row.email,
             image: row.image.unwrap(),
             password: row.password,
@@ -80,6 +81,7 @@ pub async fn create_payload(user_data: User) -> Result<String, jsonwebtoken::err
     let exp = (Utc::now() + Duration::hours(1)).timestamp(); // 1 hora de tiempo de expiración.
     let user_payload = Payload::new(
         user_data.id,
+        user_data.username,
         user_data.name,
         user_data.email,
         user_data.image,

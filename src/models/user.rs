@@ -6,8 +6,18 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Clone)]
 pub struct RegisterUser {
     pub username: String,
+    pub name: String,
     pub email: String,
     pub password: String,
+}
+
+#[derive(Debug, sqlx::FromRow, Deserialize, Serialize, Clone)]
+pub struct UserData {
+    id: i32,
+    username: String,
+    name: String,
+    email: String,
+    image: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -19,6 +29,7 @@ pub struct LoginUser {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: i32,
+    pub username: String,
     pub name: String,
     pub email: String,
     pub image: String,
@@ -29,6 +40,7 @@ pub struct User {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Payload {
     pub id: i32,
+    pub username: String,
     pub name: String,
     pub email: String,
     pub image: String,
@@ -41,12 +53,14 @@ pub struct Payload {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UpdateData {
     pub username: Option<String>,
+    pub name: Option<String>,
     pub email: Option<String>,
     pub password: Option<String>,
 }
 
 pub enum ErrorRequest {
     UsernameInvalid,
+    NameEmpty,
     UsernameEmpty,
     InvalidEmail,
     PasswordInvalid,
@@ -67,6 +81,7 @@ impl IntoResponse for ErrorRequest {
         let (status, err_msg) = match self {
             ErrorRequest::UsernameInvalid => (StatusCode::BAD_REQUEST, "Invalid username"),
             ErrorRequest::UsernameEmpty => (StatusCode::BAD_REQUEST, "You must enter a username"),
+            ErrorRequest::NameEmpty => (StatusCode::BAD_REQUEST, "You must enter a name"),
             ErrorRequest::InvalidEmail => (StatusCode::BAD_REQUEST, "Invalid email"),
             ErrorRequest::PasswordInvalid => (StatusCode::BAD_REQUEST, "invalid password"),
             ErrorRequest::UserAlreadyExists => (StatusCode::CONFLICT, "User already exists"),
@@ -107,9 +122,10 @@ impl IntoResponse for ErrorRequest {
 }
 
 impl RegisterUser {
-    pub fn new(username: String, email: String, password: String) -> RegisterUser {
+    pub fn new(username: String, name: String, email: String, password: String) -> RegisterUser {
         RegisterUser {
             username,
+            name,
             email,
             password,
         }
@@ -125,6 +141,7 @@ impl LoginUser {
 impl Payload {
     pub fn new(
         id: i32,
+        username: String,
         name: String,
         email: String,
         password: String,
@@ -140,6 +157,7 @@ impl Payload {
 
         Payload {
             id,
+            username,
             name,
             email,
             image,

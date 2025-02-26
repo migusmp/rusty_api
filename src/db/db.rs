@@ -6,6 +6,8 @@ use sqlx::PgPool;
 use std::env;
 use std::sync::Arc;
 
+use crate::models::user::UserData;
+
 // Función para obtener el pool de conexiones a la base de datos
 // pub async fn get_db_pool() -> Result<PgPool, sqlx::Error> {
 //     dotenv().ok();
@@ -55,17 +57,19 @@ pub async fn create_users_table(pool: &PgPool) -> Result<(), sqlx::Error> {
 // Guardamos al usuario en la BBDD.
 pub async fn insert_user(
     username: &String,
+    name: &String,
     email: &String,
     pool: &Arc<PgPool>,
     hashed_pwd: &String,
 ) -> Result<(), Error> {
     let query = r#"
-        INSERT INTO users (username, email, password)
-        VALUES ($1, $2, $3)
+        INSERT INTO users (username, name, email, password)
+        VALUES ($1, $2, $3, $4)
     "#;
 
     sqlx::query(query)
         .bind(username)
+        .bind(name)
         .bind(email)
         .bind(hashed_pwd)
         .execute(&**pool) // Ejecutamos sin transacción
@@ -145,6 +149,20 @@ async fn update_username(new_username: String, id: i32, pool: &Arc<PgPool>) -> R
     Ok(())
 }
 
+async fn update_name(new_name: String, id: i32, pool: &Arc<PgPool>) -> Result<(), Error> {
+    let query = r#"
+        UPDATE users
+        SET name = $1
+        WHERE id = $2
+    "#;
+    sqlx::query(query)
+        .bind(new_name)
+        .bind(id)
+        .execute(&**pool)
+        .await?;
+    Ok(())
+}
+
 // TODO
 pub async fn update_user_pwd(new_pwd: String, id: i32, pool: &Arc<PgPool>) -> UpdateUserPassword {
     let pwd = match bcrypt::hash(&new_pwd, 4) {
@@ -200,6 +218,17 @@ pub async fn update_user_email(new_email: String, id: i32, pool: &Arc<PgPool>) -
     }
 }
 
+pub async fn update_name_from_user(
+    new_name: String,
+    id: i32,
+    pool: &Arc<PgPool>,
+) -> UpdateUserName {
+    match update_name(new_name, id, pool).await {
+        Ok(_) => UpdateUserName::UserNameUpdated,
+        Err(_) => UpdateUserName::ConsultError,
+    }
+}
+
 async fn update_email(new_email: String, id: i32, pool: &Arc<PgPool>) -> Result<(), Error> {
     let query = r#"
         UPDATE users
@@ -246,6 +275,23 @@ pub async fn get_user_friends(
         .await?;
 
     Ok(friends)
+}
+
+pub async fn get_user_profile_data(
+    user_id: i32,
+    pool: &Arc<PgPool>,
+) -> Result<UserData, sqlx::Error> {
+    let query = r#"
+        SELECT id, username, email, name, image
+        FROM users
+        WHERE id= $1
+    "#;
+
+    let user_data = sqlx::query_as::<_, UserData>(&query)
+        .bind(user_id)
+        .fetch_one(pool.as_ref())
+        .await?;
+    Ok(user_data)
 }
 
 pub async fn delete_all_db(pool: &PgPool) -> Result<(), sqlx::Error> {
