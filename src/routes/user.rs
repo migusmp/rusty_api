@@ -11,6 +11,7 @@ pub fn user_router(pool: Arc<PgPool>) -> Router {
     let pool_login = pool.clone();
     let pool_get_friends = pool.clone();
     let pool_profile = pool.clone();
+
     Router::new()
         .route(
             "/register",
